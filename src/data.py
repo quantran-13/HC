@@ -1,4 +1,3 @@
-# %%
 import os
 import numpy as np
 import pandas as pd
@@ -27,8 +26,6 @@ def generate_train_valid_indices():
     np.save(os.path.join(output_dir, "train_indices.npy"), train_indices)
     np.save(os.path.join(output_dir, "valid_indices.npy"), valid_indices)
 
-# %%
-
 
 def create_data_csv(df, mode):
     output_dir = "../data/"
@@ -48,15 +45,13 @@ def generate_data_csv():
     create_data_csv(df, "train")
     create_data_csv(df, "valid")
 
-# %%
-
 
 class DataLoader(object):
     """
     A TensorFlow Dataset API based loader for semantic segmentation problems.
     """
 
-    def __init__(self, root, mode="train", one_hot_encoding=False, palette=None, image_size=(216, 320)):
+    def __init__(self, root, mode="train", one_hot_encoding=False, palette=None, image_size=(216, 320, 1)):
         """
         root: "../data/training_set"
         """
@@ -64,7 +59,7 @@ class DataLoader(object):
         self.root = root
         self.one_hot_encoding = one_hot_encoding
         self.palette = palette
-        self.image_size = image_size
+        self.image_size = (image_size[0], image_size[1])
 
         if (mode == "train"):
             self.df = pd.read_csv("../data/train.csv")
@@ -86,8 +81,9 @@ class DataLoader(object):
         mask_content = tf.io.read_file(mask_paths)
 
         images = tf.image.decode_png(image_content, channels=1)
+        images = tf.cast(images, tf.float32)
         masks = tf.image.decode_png(mask_content, channels=1)
-        # image = tf.image.convert_image_dtype(image, tf.uint8)
+        masks = tf.cast(masks, tf.float32)
 
         return images, masks
 
@@ -127,7 +123,7 @@ class DataLoader(object):
 
             return image_f, mask_f
 
-        return tf.py_function(augmentation_func, [image, mask], [tf.float32, tf.uint8])
+        return tf.py_function(augmentation_func, [image, mask], [tf.float32, tf.float32])
 
     def data_gen(self, batch_size, shuffle=False):
         # Create dataset out of the 2 files:
@@ -148,12 +144,8 @@ class DataLoader(object):
         return data
 
 
-# %%
 if __name__ == "__main__":
     data = DataLoader("../data/training_set").data_gen(32)
     for image, mask in data:
         print(np.unique(image.numpy()))
         break
-
-
-# %%

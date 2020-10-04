@@ -54,7 +54,7 @@ def train():
                           verbose=1)
 
     timestr = time_to_timestr()
-    log_dir = "./logs/fit/{}".format(timestr)
+    log_dir = "../logs/fit/{}".format(timestr)
     tensorboard_callback = tf.keras.callbacks.TensorBoard(
         log_dir=log_dir, write_images=True)
 
