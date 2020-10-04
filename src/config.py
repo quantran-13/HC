@@ -1,0 +1,9 @@
+# hyperparameter
+DROPOUT_RATE = 0.1
+
+IMAGE_SIZE = (270, 400, 1)
+BATCH_SIZE = 16
+EPOCHS = 1
+
+LEARNING_RATE = 1e-2
+MOMENTUM = 0.9
