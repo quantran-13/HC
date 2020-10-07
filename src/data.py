@@ -2,9 +2,11 @@ import os
 import numpy as np
 import pandas as pd
 import random
+import matplotlib.pyplot as plt
 
 from sklearn.model_selection import train_test_split
 import tensorflow as tf
+from config import *
 
 
 AUTOTUNE = tf.data.experimental.AUTOTUNE
@@ -34,9 +36,9 @@ def create_data_csv(df, mode):
 
     subset_indices = np.load(npy_path)
 
-    train_df = df[df.index.isin(subset_indices)]
-    train_df = train_df["filename"]
-    train_df.to_csv(output_path, index=False)
+    subset_df = df[df.index.isin(subset_indices)]
+    subset_df = subset_df["filename"]
+    subset_df.to_csv(output_path, index=False)
 
 
 def generate_data_csv():
@@ -51,7 +53,7 @@ class DataLoader(object):
     A TensorFlow Dataset API based loader for semantic segmentation problems.
     """
 
-    def __init__(self, root, mode="train", one_hot_encoding=False, palette=None, image_size=(216, 320, 1)):
+    def __init__(self, root, mode="train", one_hot_encoding=True, palette=PALETTE, image_size=(216, 320, 1)):
         """
         root: "../data/training_set"
         """
@@ -73,6 +75,7 @@ class DataLoader(object):
     def parse_data_path(self):
         self.image_paths = [os.path.join(self.root, _[0])
                             for _ in self.df.values.tolist()]
+        
         self.mask_paths = [_.replace(".png", "_Annotation.png")
                            for _ in self.image_paths]
 
@@ -82,6 +85,7 @@ class DataLoader(object):
 
         images = tf.image.decode_png(image_content, channels=1)
         images = tf.cast(images, tf.float32)
+        
         masks = tf.image.decode_png(mask_content, channels=1)
         masks = tf.cast(masks, tf.float32)
 
@@ -91,7 +95,7 @@ class DataLoader(object):
         """
         Resizes images to specified size.
         """
-        image = tf.image.resize(image, self.image_size)
+        image = tf.image.resize(image, self.image_size, method="nearest")
         mask = tf.image.resize(mask, self.image_size, method="nearest")
 
         return image, mask
