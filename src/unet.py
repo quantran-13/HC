@@ -78,10 +78,7 @@ def unet(input_size=(256, 256, 1), n_filters=64, batchnorm=True):
     u9 = Dropout(DROPOUT_RATE)(u9)
     c9 = conv2d_block(u9, n_filters * 1, kernel_size=3, batchnorm=batchnorm)
 
-    c10 = Conv2D(2, 3, activation='relu',
-                 kernel_initializer='he_normal', padding='same')(c9)
-
-    outputs = Conv2D(1, (1, 1), activation='sigmoid')(c10)
+    outputs = Conv2D(1, (1, 1), activation='sigmoid')(c9)
     model = Model(inputs=[inputs], outputs=[outputs], name="UNet")
 
     # model.summary()

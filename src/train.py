@@ -1,3 +1,10 @@
+from data import DataLoader
+from utils import time_to_timestr
+import losses
+from config import *
+from unet import unet
+from tensorflow.keras.callbacks import EarlyStopping, ReduceLROnPlateau, ModelCheckpoint
+from tensorflow.keras.optimizers import SGD
 import os
 import pandas as pd
 from tqdm import tqdm
@@ -5,14 +12,6 @@ import datetime
 
 import tensorflow as tf
 tf.get_logger().setLevel('INFO')
-from tensorflow.keras.optimizers import SGD
-from tensorflow.keras.callbacks import EarlyStopping, ReduceLROnPlateau, ModelCheckpoint
-
-from unet import unet
-from config import *
-import losses
-from utils import time_to_timestr
-from data import DataLoader
 
 
 def train():
@@ -41,8 +40,8 @@ def train():
     print("Optimizer: ", optimizer._name)
 
     model.compile(optimizer=optimizer,
-                  loss=losses.jaccard_loss,
-                  metrics=losses.jaccard_index)
+                  loss=[losses.jaccard_loss],
+                  metrics=[losses.jaccard_index])
 
     anne = ReduceLROnPlateau(monitor="loss",
                              factor=0.2,
