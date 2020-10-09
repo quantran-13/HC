@@ -9,6 +9,7 @@ import tensorflow as tf
 from config import *
 
 
+# https://github.com/HasnainRaz/SemSegPipeline/blob/master/dataloader.py
 AUTOTUNE = tf.data.experimental.AUTOTUNE
 
 
@@ -75,7 +76,7 @@ class DataLoader(object):
     def parse_data_path(self):
         self.image_paths = [os.path.join(self.root, _[0])
                             for _ in self.df.values.tolist()]
-        
+
         self.mask_paths = [_.replace(".png", "_Annotation.png")
                            for _ in self.image_paths]
 
@@ -85,7 +86,7 @@ class DataLoader(object):
 
         images = tf.image.decode_png(image_content, channels=1)
         images = tf.cast(images, tf.float32)
-        
+
         masks = tf.image.decode_png(mask_content, channels=1)
         masks = tf.cast(masks, tf.float32)
 
@@ -112,11 +113,102 @@ class DataLoader(object):
 
         return image, one_hot_map
 
+    def change_brightness(self, image, mask):
+        """
+        Radnomly applies a random brightness change.
+        """
+        cond_brightness = tf.cast(tf.random.uniform(
+            [], maxval=2, dtype=tf.int32), tf.bool)
+        image = tf.cond(cond_brightness, lambda: tf.image.random_brightness(
+            image, 0.2), lambda: tf.identity(image))
+
+        return image, mask
+
+    def change_contrast(self, image, mask):
+        """
+        Randomly applies a random contrast change.
+        """
+        cond_contrast = tf.cast(tf.random.uniform(
+            [], maxval=2, dtype=tf.int32), tf.bool)
+        image = tf.cond(cond_contrast, lambda: tf.image.random_contrast(
+            image, 0.1, 0.5), lambda: tf.identity(image))
+
+        return image, mask
+
+    def flip_horizontally(self, image, mask):
+        """
+        Randomly flips image and mask horizontally in accord.
+        """
+        comb_tensor = tf.concat([image, mask], axis=2)
+        comb_tensor = tf.image.random_flip_left_right(comb_tensor)
+        image, mask = tf.split(comb_tensor, [1, 1], axis=2)
+
+        return image, mask
+
+    def reorder_channel(self, tensor, order="channel_first"):
+        if order == "channel_first":
+            return tf.convert_to_tensor(np.moveaxis(tensor.numpy(), -1, 0))
+        else:
+            return tf.convert_to_tensor(np.moveaxis(tensor.numpy(), 0, -1))
+
+    def _tranform(self, tensor, types):
+        tensor = self.reorder_channel(tensor)
+
+        if types == "rotate":
+            tensor = tf.keras.preprocessing.image.random_rotation(tensor, 30)
+        elif types == "shift":
+            tensor = tf.keras.preprocessing.image.random_shift(
+                tensor, 0.3, 0.3)
+        else:
+            tensor = tf.keras.preprocessing.image.random_zoom(tensor, 0.3)
+
+        tensor = self.reorder_channel(
+            tf.convert_to_tensor(tensor), order="channel_last")
+
+        return tensor
+
+    def rotate(self, image, mask):
+        cond_rotate = tf.cast(tf.random.uniform(
+            [], maxval=2, dtype=tf.int32), tf.bool)
+        comb_tensor = tf.concat([image, mask], axis=2)
+        comb_tensor = tf.cond(cond_rotate, lambda: self._tranform(
+            comb_tensor, "rotate"), lambda: tf.identity(comb_tensor))
+        image, mask = tf.split(comb_tensor, [1, 1], axis=2)
+
+        return image, mask
+
+    def shift(self, image, mask):
+        cond_shift = tf.cast(tf.random.uniform(
+            [], maxval=2, dtype=tf.int32), tf.bool)
+        comb_tensor = tf.concat([image, mask], axis=2)
+        comb_tensor = tf.cond(cond_shift, lambda: self._tranform(
+            comb_tensor, "shift"), lambda: tf.identity(comb_tensor))
+        image, mask = tf.split(comb_tensor, [1, 1], axis=2)
+
+        return image, mask
+
+    def zoom(self, image, mask):
+        cond_zoom = tf.cast(tf.random.uniform(
+            [], maxval=2, dtype=tf.int32), tf.bool)
+        comb_tensor = tf.concat([image, mask], axis=2)
+        comb_tensor = tf.cond(cond_zoom, lambda: self._tranform(
+            comb_tensor, "zoom"), lambda: tf.identity(comb_tensor))
+        image, mask = tf.split(comb_tensor, [1, 1], axis=2)
+
+        return image, mask
+
     @tf.function
     def map_function(self, images_path, masks_path):
         image, mask = self.parse_data(images_path, masks_path)
 
         def augmentation_func(image_f, mask_f):
+            image_f, mask_f = self.normalize_data(image_f, mask_f)
+            image_f, mask_f = self.change_brightness(image_f, mask_f)
+            image_f, mask_f = self.change_contrast(image_f, mask_f)
+            image_f, mask_f = self.flip_horizontally(image_f, mask_f)
+            image_f, mask_f = self.rotate(image_f, mask_f)
+            image_f, mask_f = self.shift(image_f, mask_f)
+
             if self.one_hot_encoding:
                 if self.palette is None:
                     raise ValueError('No Palette for one-hot encoding specified in the data loader! \
