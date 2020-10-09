@@ -54,12 +54,13 @@ class DataLoader(object):
     A TensorFlow Dataset API based loader for semantic segmentation problems.
     """
 
-    def __init__(self, root, mode="train", one_hot_encoding=True, palette=PALETTE, image_size=(216, 320, 1)):
+    def __init__(self, root, mode="train", augmentation=False, one_hot_encoding=True, palette=PALETTE, image_size=(216, 320, 1)):
         """
         root: "../data/training_set"
         """
         super().__init__()
         self.root = root
+        self.augmentation = augmentation
         self.one_hot_encoding = one_hot_encoding
         self.palette = palette
         self.image_size = (image_size[0], image_size[1])
@@ -213,11 +214,13 @@ class DataLoader(object):
 
         def augmentation_func(image_f, mask_f):
             image_f, mask_f = self.normalize_data(image_f, mask_f)
-            image_f, mask_f = self.change_brightness(image_f, mask_f)
-            image_f, mask_f = self.change_contrast(image_f, mask_f)
-            image_f, mask_f = self.flip_horizontally(image_f, mask_f)
-            image_f, mask_f = self.rotate(image_f, mask_f)
-            image_f, mask_f = self.shift(image_f, mask_f)
+
+            if self.augmentation:
+                image_f, mask_f = self.change_brightness(image_f, mask_f)
+                image_f, mask_f = self.change_contrast(image_f, mask_f)
+                image_f, mask_f = self.flip_horizontally(image_f, mask_f)
+                image_f, mask_f = self.rotate(image_f, mask_f)
+                image_f, mask_f = self.shift(image_f, mask_f)
 
             if self.one_hot_encoding:
                 if self.palette is None:

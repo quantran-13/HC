@@ -192,4 +192,5 @@ pip-selfcheck.json
 *.png
 data/*.zip
 .vscode
-log/
+logs/
+models/

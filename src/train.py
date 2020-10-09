@@ -31,7 +31,7 @@ def train():
     train_gen = train_set.data_gen(BATCH_SIZE, shuffle=True)
     valid_set = DataLoader("../data/training_set/",
                            mode="valid", image_size=IMAGE_SIZE)
-    valid_gen = train_set.data_gen(BATCH_SIZE, shuffle=True)
+    valid_gen = valid_set.data_gen(BATCH_SIZE, shuffle=True)
 
     model = unet(IMAGE_SIZE)
     print("Model: ", model._name)

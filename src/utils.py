@@ -9,4 +9,7 @@ def time_to_timestr():
     timestr = datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
 
     return timestr
- 
+
+
+def load_model():
+    pass
