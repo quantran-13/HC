@@ -92,6 +92,16 @@ class DataLoader(object):
 
         return images, masks
 
+    def normalize_data(self, image, mask):
+        """
+        Normalize images
+        """
+
+        image /= 255
+        # image = tf.image.per_image_standardization(image)
+
+        return image, mask
+
     def resize_data(self, image, mask):
         """
         Resizes images to specified size.
