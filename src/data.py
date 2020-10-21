@@ -161,7 +161,7 @@ class DataLoader(object):
             self.image_paths = [os.path.join(
                 self.root, _[0]) for _ in self.df.values.tolist()]
 
-    def parse_data(self, image_paths, mask_paths):
+    def parse_data(self, image_paths, mask_paths=None):
         image_content = tf.io.read_file(image_paths)
         images = tf.image.decode_png(image_content, channels=1)
         images = tf.cast(images, tf.float32)
@@ -343,7 +343,7 @@ class DataLoader(object):
             # Parse images and labels
             data = data.map(self.map_function, num_parallel_calls=AUTOTUNE)
         elif self.mode == "test":
-            data = tf.data.Dataset.((self.image_paths))
+            data = tf.data.Dataset.from_tensor_slices((self.image_paths))
             data = data.map(self.test_map_function,
                             num_parallel_calls=AUTOTUNE)
 

@@ -18,14 +18,13 @@ def eval(model):
     print("Model score {} and loss {}".format(result[1], result[0]))
 
 
-def predict(model_path):
+def predict(model_path, save_path="../data/predcited"):
+    if not os.path.exists(save_path):
+        os.mkdir(save_path)
+
     file_path = os.path.join("../models", model_path)
     model = load_model_from_path(file_path)
-
     eval(model)
-
-    if not os.path.exists("../data/predcited"):
-        os.mkdir("../data/predcited")
 
     print("="*100)
     print("LOADING TESTING DATA ...\n")
@@ -40,7 +39,7 @@ def predict(model_path):
 
     df = pd.read_csv("../data/test_set_pixel_size.csv")
 
-    image_paths = [os.path.join("../data/predcited", _[0])
+    image_paths = [os.path.join(save_path, _[0])
                    for _ in df.values.tolist()]
     pre_paths = [_.replace(".png", "_Predicted_Mask.png") for _ in image_paths]
 
