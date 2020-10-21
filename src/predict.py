@@ -8,7 +8,10 @@ from data import DataLoader
 from utils import load_model_from_path
 
 
-def eval(model):
+def eval(model_path):
+    file_path = os.path.join("../models", model_path)
+    model = load_model_from_path(file_path)
+
     print("Model train using 799 images and valid on 200 images.")
     valid_set = DataLoader("../data/training_set/", mode="valid", augmentation=True,
                            one_hot_encoding=True, palette=PALETTE, image_size=IMAGE_SIZE)
@@ -24,13 +27,12 @@ def predict(model_path, save_path="../data/predcited"):
 
     file_path = os.path.join("../models", model_path)
     model = load_model_from_path(file_path)
-    eval(model)
 
     print("="*100)
     print("LOADING TESTING DATA ...\n")
     test_set = DataLoader("../data/test_set/",
                           mode="test", image_size=IMAGE_SIZE)
-    test_gen = test_set.data_gen(8, shuffle=True)
+    test_gen = test_set.data_gen(8)
 
     print("="*100)
     print("PREDICTING ...")

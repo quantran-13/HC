@@ -10,6 +10,7 @@ from sklearn.model_selection import train_test_split
 import tensorflow as tf
 
 from config import *
+from ellipse_fitting import ellipse_circumference_approx
 
 # https://github.com/HasnainRaz/SemSegPipeline/blob/master/dataloader.py
 AUTOTUNE = tf.data.experimental.AUTOTUNE
@@ -67,11 +68,8 @@ def add_ellipses_and_bboxs_csv():
         axes_b.append(semi_axes_b_mm)
         angles.append(angle_rad)
 
-        h = (semi_axes_a_mm - semi_axes_b_mm) ** 2 / \
-            (semi_axes_a_mm + semi_axes_b_mm) ** 2
-        circ = (np.pi * (semi_axes_a_mm + semi_axes_b_mm)
-                * (1 + (3 * h) / (10 + np.sqrt(4 - 3 * h))))
-        # circ = 1.62 * (2 * semi_axes_a_mm + 2 * semi_axes_b_mm)
+        circ = ellipse_circumference_approx(semi_axes_a_mm, semi_axes_b_mm)
+        
         assert np.abs(circ - row["head circumference (mm)"]
                       ) < 0.1, "wrong ellipse circumference approximation"
 
