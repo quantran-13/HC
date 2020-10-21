@@ -2,7 +2,7 @@ import os
 import sys
 import glob
 import datetime
-import matplotlib.pyplot as plt
+# import matplotlib.pyplot as plt
 
 import tensorflow as tf
 from tensorflow.keras.models import load_model
@@ -21,6 +21,7 @@ def load_model_from_path(file_path):
                       "jaccard_index": losses.jaccard_index,
                       "dice_loss": losses.dice_loss,
                       "dice_coeff": losses.dice_coeff}
+
     model = load_model(file_path, custom_objects=custom_objects)
 
     return model

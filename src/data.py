@@ -3,7 +3,7 @@ import random
 import numpy as np
 import pandas as pd
 from PIL import Image
-import matplotlib.pyplot as plt
+# import matplotlib.pyplot as plt
 
 import cv2
 from sklearn.model_selection import train_test_split
@@ -129,47 +129,53 @@ class DataLoader(object):
     A TensorFlow Dataset API based loader for semantic segmentation problems.
     """
 
-    def __init__(self, root, mode="train", augmentation=False, one_hot_encoding=True, palette=PALETTE, image_size=(216, 320, 1)):
+    def __init__(self, root, mode="train", augmentation=False, one_hot_encoding=False, palette=None, image_size=(216, 320, 1)):
         """
         root: "../data/training_set"
         """
         super().__init__()
         self.root = root
+        self.mode = mode
         self.augmentation = augmentation
         self.one_hot_encoding = one_hot_encoding
         self.palette = palette
         self.image_size = (image_size[0], image_size[1])
 
-        if (mode == "train"):
+        if (self.mode == "train"):
             self.df = pd.read_csv("../data/train.csv")
-        elif (mode == "valid"):
+        elif (self.mode == "valid"):
             self.df = pd.read_csv("../data/valid.csv")
-        elif (mode == "test"):
+        elif (self.mode == "test"):
             self.df = pd.read_csv("../data/test_set_pixel_size.csv")
 
-        if mode in ["train", "valid"]:
-            self.parse_data_path()
+        self.parse_data_path()
 
     def parse_data_path(self):
-        self.image_paths = [os.path.join(self.root, _[0])
-                            for _ in self.df.values.tolist()]
+        if self.mode in ["train", "valid"]:
+            self.image_paths = [os.path.join(self.root, _[0])
+                                for _ in self.df.values.tolist()]
 
-        self.mask_paths = [_.replace(".png", "_Annotation.png")
-                           for _ in self.image_paths]
+            self.mask_paths = [_.replace(".png", "_Annotation.png")
+                               for _ in self.image_paths]
+        elif self.mode == "test":
+            self.image_paths = [os.path.join(
+                self.root, _[0]) for _ in self.df.values.tolist()]
 
     def parse_data(self, image_paths, mask_paths):
         image_content = tf.io.read_file(image_paths)
-        mask_content = tf.io.read_file(mask_paths)
-
         images = tf.image.decode_png(image_content, channels=1)
         images = tf.cast(images, tf.float32)
 
-        masks = tf.image.decode_png(mask_content, channels=1)
-        masks = tf.cast(masks, tf.float32)
+        if self.mode in ["train", "valid"]:
+            mask_content = tf.io.read_file(mask_paths)
+            masks = tf.image.decode_png(mask_content, channels=1)
+            masks = tf.cast(masks, tf.float32)
 
-        return images, masks
+            return images, masks
 
-    def normalize_data(self, image, mask):
+        return images
+
+    def normalize_data(self, image, mask=None):
         """
         Normalize images
         """
@@ -177,18 +183,25 @@ class DataLoader(object):
         image /= 255
         # image = tf.image.per_image_standardization(image)
 
-        return image, mask
+        if mask is not None:
+            return image, mask
 
-    def resize_data(self, image, mask):
+        return image
+
+    def resize_data(self, image, mask=None):
         """
         Resizes images to specified size.
         """
         image = tf.image.resize_with_pad(
             image, self.image_size[0], self.image_size[1], method="nearest")
-        mask = tf.image.resize_with_pad(
-            mask, self.image_size[0], self.image_size[1], method="nearest")
 
-        return image, mask
+        if mask is not None:
+            mask = tf.image.resize_with_pad(
+                mask, self.image_size[0], self.image_size[1], method="nearest")
+
+            return image, mask
+
+        return image
 
     def one_hot_encode(self, image, mask):
         one_hot_map = []
@@ -312,13 +325,27 @@ class DataLoader(object):
 
         return tf.py_function(augmentation_func, [image, mask], [tf.float32, tf.float32])
 
-    def data_gen(self, batch_size, shuffle=False):
-        # Create dataset out of the 2 files:
-        data = tf.data.Dataset.from_tensor_slices(
-            (self.image_paths, self.mask_paths))
+    @tf.function
+    def test_map_function(self, images_path):
+        image = self.parse_data(images_path)
 
-        # Parse images and labels
-        data = data.map(self.map_function, num_parallel_calls=AUTOTUNE)
+        image_f = self.normalize_data(image)
+        image_f = self.resize_data(image_f)
+
+        return image_f
+
+    def data_gen(self, batch_size, shuffle=False):
+        if self.mode in ["train", "valid"]:
+            # Create dataset out of the 2 files:
+            data = tf.data.Dataset.from_tensor_slices(
+                (self.image_paths, self.mask_paths))
+
+            # Parse images and labels
+            data = data.map(self.map_function, num_parallel_calls=AUTOTUNE)
+        elif self.mode == "test":
+            data = tf.data.Dataset.((self.image_paths))
+            data = data.map(self.test_map_function,
+                            num_parallel_calls=AUTOTUNE)
 
         if shuffle:
             # Prefetch, shuffle then batch
@@ -332,6 +359,14 @@ class DataLoader(object):
 
 
 if __name__ == "__main__":
+
+    if "training_set_pixel_size_and_HC_and_ellipses_and_bounding_boxs.csv" not in os.listdir("../data"):
+        add_ellipses_and_bboxs_csv()
+
+    if "train_indices.npy" not in os.listdir("../data"):
+        generate_train_valid_indices()
+        generate_data_csv()
+
     data = DataLoader("../data/training_set").data_gen(32)
     for image, mask in data:
         print(np.unique(image.numpy()))
