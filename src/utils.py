@@ -16,13 +16,11 @@ def time_to_timestr():
     return timestr
 
 
-custom_objects = {"jaccard_loss": losses.jaccard_loss,
-                  "jaccard_index": losses.jaccard_index,
-                  "dice_loss": losses.dice_loss,
-                  "dice_coeff": losses.dice_coeff}
-
-
-def load_model(file_path):
-    model = tf.keras.models.load_model(file_path, custom_objects=custom_objects)
+def load_model_from_path(file_path):
+    custom_objects = {"jaccard_loss": losses.jaccard_loss,
+                      "jaccard_index": losses.jaccard_index,
+                      "dice_loss": losses.dice_loss,
+                      "dice_coeff": losses.dice_coeff}
+    model = load_model(file_path, custom_objects=custom_objects)
 
     return model

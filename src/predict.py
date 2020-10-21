@@ -1,8 +1,8 @@
 import os
 
-from utils import load_model
 from config import *
 from data import DataLoader
+from utils import load_model
 
 
 def eval(model):
@@ -11,7 +11,7 @@ def eval(model):
                            augmentation=True, mode="valid", image_size=IMAGE_SIZE)
     valid_gen = valid_set.data_gen(BATCH_SIZE, shuffle=True)
 
-    result = model.evaluate(valid_gen)
+    result = model.evaluate(valid_gen, verbose=0)
     print("Model score {} and loss {}".format(result[1], result[0]))
 
 
@@ -21,7 +21,8 @@ def predict(model_path):
 
     eval(model)
 
-    
+    if not os.path.exists("../data/predcited"):
+        os.mkdir("../data/predcited")
 
 
 if __name__ == "__main__":

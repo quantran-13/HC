@@ -1,21 +1,21 @@
 import os
+import random
 import numpy as np
 import pandas as pd
-import random
+from PIL import Image
 import matplotlib.pyplot as plt
 
+import cv2
 from sklearn.model_selection import train_test_split
 import tensorflow as tf
-from config import *
 
+from config import *
 
 # https://github.com/HasnainRaz/SemSegPipeline/blob/master/dataloader.py
 AUTOTUNE = tf.data.experimental.AUTOTUNE
 
 
 def generate_train_valid_indices():
-    output_dir = "../data/"
-
     X = np.arange(999)
     X_train, X_valid, _, _ = train_test_split(
         X, np.ones_like(X), test_size=0.2)
@@ -26,24 +26,99 @@ def generate_train_valid_indices():
     assert len(train_indices) + len(valid_indices) == 999
     assert not set(train_indices) & set(valid_indices)
 
-    np.save(os.path.join(output_dir, "train_indices.npy"), train_indices)
-    np.save(os.path.join(output_dir, "valid_indices.npy"), valid_indices)
+    np.save("../data/train_indices.npy", train_indices)
+    np.save("../data/valid_indices.npy", valid_indices)
+
+
+def add_ellipses_and_bboxs_csv():
+    df = pd.read_csv("./training_set_pixel_size_and_HC.csv")
+
+    centers_x = list()
+    centers_y = list()
+    axes_a = list()
+    axes_b = list()
+    angles = list()
+
+    x_mins = list()
+    y_mins = list()
+    x_maxs = list()
+    y_maxs = list()
+
+    for i, row in df.iterrows():
+        filename = row["filename"]
+        img = np.array(Image.open(os.path.join("../data/training_set",
+                                               filename.replace(".png", "_Annotation.png"))))
+        # plt.imshow(img)
+        points = np.argwhere(img > 127)
+
+        (xx, yy), (MA, ma), angle = cv2.fitEllipseDirect(points)
+        factor = row["pixel size(mm)"]
+
+        center_x_mm = factor * yy
+        center_y_mm = factor * xx
+        semi_axes_a_mm = factor * ma / 2
+        semi_axes_b_mm = factor * MA / 2
+        angle_rad = (-angle * np.pi / 180) % np.pi
+        # print(center_x_mm, center_y_mm, semi_axes_a_mm, semi_axes_b_mm, angle_rad)
+
+        centers_x.append(center_x_mm)
+        centers_y.append(center_y_mm)
+        axes_a.append(semi_axes_a_mm)
+        axes_b.append(semi_axes_b_mm)
+        angles.append(angle_rad)
+
+        h = (semi_axes_a_mm - semi_axes_b_mm) ** 2 / \
+            (semi_axes_a_mm + semi_axes_b_mm) ** 2
+        circ = (np.pi * (semi_axes_a_mm + semi_axes_b_mm)
+                * (1 + (3 * h) / (10 + np.sqrt(4 - 3 * h))))
+        # circ = 1.62 * (2 * semi_axes_a_mm + 2 * semi_axes_b_mm)
+        assert np.abs(circ - row["head circumference (mm)"]
+                      ) < 0.1, "wrong ellipse circumference approximation"
+
+        # print("circ: ", circ)
+        # print("true circ: ", row["head circumference (mm)"])
+
+        x_max, y_max = np.amax(points, axis=0)
+        x_min, y_min = np.amin(points, axis=0)
+        # print(y_min, x_min, y_max, x_max)
+
+        # img = cv2.rectangle(img, (y_min, x_min), (y_max, x_max), (255, 0, 0), 1)
+        # plt.imshow(img)
+
+        x_mins.append(y_min)
+        y_mins.append(x_min)
+        x_maxs.append(y_max)
+        y_maxs.append(x_max)
+
+    df["center x(mm)"] = centers_x
+    df["center y(mm)"] = centers_y
+    df["semi axes a(mm)"] = axes_a
+    df["semi axes b(mm)"] = axes_b
+    df["angle(rad)"] = angles
+
+    df["x min"] = x_mins
+    df["y min"] = y_mins
+    df["x max"] = x_maxs
+    df["y max"] = y_maxs
+
+    print(df)
+    df.to_csv(
+        "../data/training_set_pixel_size_and_HC_and_ellipses_and_bounding_boxs.csv", index=False)
 
 
 def create_data_csv(df, mode):
-    output_dir = "../data/"
-    output_path = os.path.join(output_dir, "{}.csv".format(mode))
+    output_path = "../data/{}.csv".format(mode)
     npy_path = "../data/{}_indices.npy".format(mode)
 
     subset_indices = np.load(npy_path)
 
     subset_df = df[df.index.isin(subset_indices)]
-    subset_df = subset_df["filename"]
     subset_df.to_csv(output_path, index=False)
 
 
 def generate_data_csv():
-    df = pd.read_csv("../data/training_set_pixel_size_and_HC.csv")
+    df = pd.read_csv(
+        "../data/training_set_pixel_size_and_HC_and_ellipses_and_bounding_boxs.csv")
 
     create_data_csv(df, "train")
     create_data_csv(df, "valid")
@@ -72,7 +147,8 @@ class DataLoader(object):
         elif (mode == "test"):
             self.df = pd.read_csv("../data/test_set_pixel_size.csv")
 
-        self.parse_data_path()
+        if mode in ["train", "valid"]:
+            self.parse_data_path()
 
     def parse_data_path(self):
         self.image_paths = [os.path.join(self.root, _[0])
@@ -107,8 +183,10 @@ class DataLoader(object):
         """
         Resizes images to specified size.
         """
-        image = tf.image.resize(image, self.image_size, method="nearest")
-        mask = tf.image.resize(mask, self.image_size, method="nearest")
+        image = tf.image.resize_with_pad(
+            image, self.image_size[0], self.image_size[1], method="nearest")
+        mask = tf.image.resize_with_pad(
+            mask, self.image_size[0], self.image_size[1], method="nearest")
 
         return image, mask
 

@@ -1,14 +1,14 @@
-from data import DataLoader
 from utils import time_to_timestr
-import losses
-from config import *
+from data import DataLoader
 from unet import unet
-from tensorflow.keras.callbacks import EarlyStopping, ReduceLROnPlateau, ModelCheckpoint
+from config import *
+import losses
 from tensorflow.keras.optimizers import SGD
+from tensorflow.keras.callbacks import EarlyStopping, ReduceLROnPlateau, ModelCheckpoint
 import os
+import datetime
 import pandas as pd
 from tqdm import tqdm
-import datetime
 
 import tensorflow as tf
 tf.get_logger().setLevel('INFO')
@@ -75,7 +75,7 @@ def train():
                         use_multiprocessing=True)
 
     his = pd.DataFrame(history.history)
-    his.to_csv("../models/{}/history.csv".format(timestr))
+    his.to_csv("../models/{}/history.csv".format(timestr), index=False)
 
 
 if __name__ == "__main__":
