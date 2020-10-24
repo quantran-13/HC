@@ -6,7 +6,7 @@ LOSS = "bce_dice"
 GAMMA = 2.0  # focal loss gamma
 
 OPTIMIZER = "sgd"
-METRICS = "dice"
+METRICS = "dice_coeff"
 
 # hyperparameter
 DROPOUT_RATE = 0.1
