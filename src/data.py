@@ -10,7 +10,8 @@ from sklearn.model_selection import train_test_split
 import tensorflow as tf
 
 from config import *
-from ellipse_fitting import ellipse_circumference_approx
+from utils import read_image
+from ellipse_fitting import *
 
 # https://github.com/HasnainRaz/SemSegPipeline/blob/master/dataloader.py
 AUTOTUNE = tf.data.experimental.AUTOTUNE
@@ -32,7 +33,11 @@ def generate_train_valid_indices():
 
 
 def add_ellipses_and_bboxs_csv():
-    df = pd.read_csv("./training_set_pixel_size_and_HC.csv")
+    """
+        Add ellipses parameters & bounding box parameters to training_set_pixel_size_and_HC.csv
+    """
+
+    df = pd.read_csv("../data/training_set_pixel_size_and_HC.csv")
 
     centers_x = list()
     centers_y = list()
@@ -47,12 +52,12 @@ def add_ellipses_and_bboxs_csv():
 
     for i, row in df.iterrows():
         filename = row["filename"]
-        img = np.array(Image.open(os.path.join("../data/training_set",
-                                               filename.replace(".png", "_Annotation.png"))))
-        # plt.imshow(img)
-        points = np.argwhere(img > 127)
+        print("Image: {}\n".format(filename))
+        anno = read_image(os.path.join("../data/training_set",
+                                       filename.replace(".png", "_Annotation.png")))
 
-        (xx, yy), (MA, ma), angle = cv2.fitEllipseDirect(points)
+        # plt.imshow(anno)
+        (xx, yy), (MA, ma), angle = ellipse_fit_anno(anno)
         factor = row["pixel size(mm)"]
 
         center_x_mm = factor * yy
@@ -69,13 +74,14 @@ def add_ellipses_and_bboxs_csv():
         angles.append(angle_rad)
 
         circ = ellipse_circumference_approx(semi_axes_a_mm, semi_axes_b_mm)
-        
+
         assert np.abs(circ - row["head circumference (mm)"]
-                      ) < 0.1, "wrong ellipse circumference approximation"
+                      ) < 0.1, "Wrong ellipse circumference approximation"
 
         # print("circ: ", circ)
         # print("true circ: ", row["head circumference (mm)"])
 
+        points = np.argwhere(anno > 127)
         x_max, y_max = np.amax(points, axis=0)
         x_min, y_min = np.amin(points, axis=0)
         # print(y_min, x_min, y_max, x_max)
@@ -105,13 +111,12 @@ def add_ellipses_and_bboxs_csv():
 
 
 def create_data_csv(df, mode):
-    output_path = "../data/{}.csv".format(mode)
     npy_path = "../data/{}_indices.npy".format(mode)
 
     subset_indices = np.load(npy_path)
 
     subset_df = df[df.index.isin(subset_indices)]
-    subset_df.to_csv(output_path, index=False)
+    subset_df.to_csv("../data/{}.csv".format(mode), index=False)
 
 
 def generate_data_csv():
@@ -124,7 +129,7 @@ def generate_data_csv():
 
 class DataLoader(object):
     """
-    A TensorFlow Dataset API based loader for semantic segmentation problems.
+        A TensorFlow Dataset API based loader for semantic segmentation problems.
     """
 
     def __init__(self, root, mode="train", augmentation=False, one_hot_encoding=False, palette=None, image_size=(216, 320, 1)):
@@ -156,16 +161,18 @@ class DataLoader(object):
             self.mask_paths = [_.replace(".png", "_Annotation.png")
                                for _ in self.image_paths]
         elif self.mode == "test":
-            self.image_paths = [os.path.join(
-                self.root, _[0]) for _ in self.df.values.tolist()]
+            self.image_paths = [os.path.join(self.root, _[0])
+                                for _ in self.df.values.tolist()]
 
     def parse_data(self, image_paths, mask_paths=None):
         image_content = tf.io.read_file(image_paths)
+        # grayscale
         images = tf.image.decode_png(image_content, channels=1)
         images = tf.cast(images, tf.float32)
 
         if self.mode in ["train", "valid"]:
             mask_content = tf.io.read_file(mask_paths)
+            # grayscale
             masks = tf.image.decode_png(mask_content, channels=1)
             masks = tf.cast(masks, tf.float32)
 
@@ -175,10 +182,9 @@ class DataLoader(object):
 
     def normalize_data(self, image, mask=None):
         """
-        Normalize images
+            Normalizes image
         """
-
-        image /= 255
+        image /= 255.
         # image = tf.image.per_image_standardization(image)
 
         if mask is not None:
@@ -188,7 +194,7 @@ class DataLoader(object):
 
     def resize_data(self, image, mask=None):
         """
-        Resizes images to specified size.
+            Resizes image to specified size but still keep aspect ratio
         """
         image = tf.image.resize_with_pad(
             image, self.image_size[0], self.image_size[1], method="nearest")
@@ -202,6 +208,9 @@ class DataLoader(object):
         return image
 
     def one_hot_encode(self, image, mask):
+        """
+            One hot encodes mask
+        """
         one_hot_map = []
 
         for colour in self.palette:
@@ -215,29 +224,31 @@ class DataLoader(object):
 
     def change_brightness(self, image, mask):
         """
-        Radnomly applies a random brightness change.
+            Randomly applies a random brightness change.
         """
         cond_brightness = tf.cast(tf.random.uniform(
             [], maxval=2, dtype=tf.int32), tf.bool)
-        image = tf.cond(cond_brightness, lambda: tf.image.random_brightness(
-            image, 0.2), lambda: tf.identity(image))
+        image = tf.cond(cond_brightness,
+                        lambda: tf.image.random_brightness(image, 0.2),
+                        lambda: tf.identity(image))
 
         return image, mask
 
     def change_contrast(self, image, mask):
         """
-        Randomly applies a random contrast change.
+            Randomly applies a random contrast change.
         """
         cond_contrast = tf.cast(tf.random.uniform(
             [], maxval=2, dtype=tf.int32), tf.bool)
-        image = tf.cond(cond_contrast, lambda: tf.image.random_contrast(
-            image, 0.1, 0.5), lambda: tf.identity(image))
+        image = tf.cond(cond_contrast,
+                        lambda: tf.image.random_contrast(image, 0.1, 0.5),
+                        lambda: tf.identity(image))
 
         return image, mask
 
     def flip_horizontally(self, image, mask):
         """
-        Randomly flips image and mask horizontally in accord.
+            Randomly flips image and mask horizontally in accord.
         """
         comb_tensor = tf.concat([image, mask], axis=2)
         comb_tensor = tf.image.random_flip_left_right(comb_tensor)
@@ -268,31 +279,43 @@ class DataLoader(object):
         return tensor
 
     def rotate(self, image, mask):
+        """
+            Randomly rotates image and mask
+        """
         cond_rotate = tf.cast(tf.random.uniform(
             [], maxval=2, dtype=tf.int32), tf.bool)
         comb_tensor = tf.concat([image, mask], axis=2)
-        comb_tensor = tf.cond(cond_rotate, lambda: self._tranform(
-            comb_tensor, "rotate"), lambda: tf.identity(comb_tensor))
+        comb_tensor = tf.cond(cond_rotate,
+                              lambda: self._tranform(comb_tensor, "rotate"),
+                              lambda: tf.identity(comb_tensor))
         image, mask = tf.split(comb_tensor, [1, 1], axis=2)
 
         return image, mask
 
     def shift(self, image, mask):
+        """
+            Randomly translates image and mask
+        """
         cond_shift = tf.cast(tf.random.uniform(
             [], maxval=2, dtype=tf.int32), tf.bool)
         comb_tensor = tf.concat([image, mask], axis=2)
-        comb_tensor = tf.cond(cond_shift, lambda: self._tranform(
-            comb_tensor, "shift"), lambda: tf.identity(comb_tensor))
+        comb_tensor = tf.cond(cond_shift,
+                              lambda: self._tranform(comb_tensor, "shift"),
+                              lambda: tf.identity(comb_tensor))
         image, mask = tf.split(comb_tensor, [1, 1], axis=2)
 
         return image, mask
 
     def zoom(self, image, mask):
+        """
+            Randomly scale image and mask
+        """
         cond_zoom = tf.cast(tf.random.uniform(
             [], maxval=2, dtype=tf.int32), tf.bool)
         comb_tensor = tf.concat([image, mask], axis=2)
-        comb_tensor = tf.cond(cond_zoom, lambda: self._tranform(
-            comb_tensor, "zoom"), lambda: tf.identity(comb_tensor))
+        comb_tensor = tf.cond(cond_zoom,
+                              lambda: self._tranform(comb_tensor, "zoom"),
+                              lambda: tf.identity(comb_tensor))
         image, mask = tf.split(comb_tensor, [1, 1], axis=2)
 
         return image, mask

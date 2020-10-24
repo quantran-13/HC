@@ -1,29 +1,25 @@
-import os
 import numpy as np
 import pandas as pd
 
-from utils import *
-from config import *
-from data import DataLoader
-from ellipse_fitting import ellipse_fit
+from predict import predict
+from ellipse_fitting import ellipse_fit_mask
 
 
-def generate_submission(predicted_path):
+def generate_submission(model_path, predicted_path):
     centers_x = list()
     centers_y = list()
     axes_a = list()
     axes_b = list()
     angles = list()
 
-    pre_images = read_predict_2_numpy(predicted_path)
+    (pre_paths, pre_images) = predict(model_path, predicted_path)
 
     df = pd.read_csv("../data/test_set_pixel_size.csv")
 
     for mask, (i, row) in zip(pre_images, df.iterrows()):
-        (xx, yy), (MA, ma), angle = ellipse_fit(mask)
-
         assert 540 / mask.shape[0] == 800 / mask.shape[1]
 
+        (xx, yy), (MA, ma), angle = ellipse_fit_mask(mask)
         factor = row["pixel size(mm)"] * 540 / mask.shape[0]
 
         center_x_mm = factor * yy

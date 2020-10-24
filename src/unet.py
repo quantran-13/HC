@@ -32,7 +32,7 @@ def conv2d_block(input, n_filters, kernel_size=3, batchnorm=True):
     return x
 
 
-def unet(input_size=(256, 256, 1), n_filters=64, batchnorm=True):
+def unet(input_size=(216, 320, 1), n_filters=64, batchnorm=True):
     inputs = Input(input_size, name="img")
 
     # contraction path
@@ -88,4 +88,4 @@ def unet(input_size=(256, 256, 1), n_filters=64, batchnorm=True):
 
 
 if __name__ == "__main__":
-    model = unet(input_size=IMAGE_SIZE)
+    model = unet()

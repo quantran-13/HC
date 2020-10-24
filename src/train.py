@@ -1,11 +1,11 @@
-from tensorflow.keras.callbacks import EarlyStopping, ReduceLROnPlateau, ModelCheckpoint
+from tensorflow.keras.callbacks import EarlyStopping, ReduceLROnPlateau, ModelCheckpoint, TensorBoard, LearningRateScheduler
 from tensorflow.keras.optimizers import SGD, Adam
 import os
 import datetime
 import pandas as pd
 from tqdm import tqdm
 
-import losses
+import seglosses
 from config import *
 from unet import unet
 from data import DataLoader
@@ -15,22 +15,6 @@ import tensorflow as tf
 tf.get_logger().setLevel("INFO")
 
 
-optimizers = {
-    "sgd": SGD(learning_rate=LEARNING_RATE, momentum=MOMENTUM),
-    "adam": Adam(learning_rate=LEARNING_RATE)
-}
-
-loss = {
-    "jaccard": losses.jaccard_loss,
-    "dice": losses.dice_loss
-}
-
-metrics = {
-    "jaccard_index": losses.jaccard_index,
-    "dice_coeff": losses.dice_coeff
-}
-
-
 def train():
     if not os.path.exists("../models"):
         os.mkdir("../models")
@@ -38,44 +22,78 @@ def train():
     # device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
     # print(device)
 
-    print("Epochs: {},\nBatch size: {},\nInput size: {}".format(EPOCHS,
-                                                                BATCH_SIZE,
-                                                                IMAGE_SIZE))
+    print("Epochs: {}\t\tBatch size: {}\t\tInput size: {}".format(EPOCHS,
+                                                                  BATCH_SIZE,
+                                                                  IMAGE_SIZE))
 
     # Datasets
     print("="*100)
     print("LOADING DATA ...\n")
-
-    train_set = DataLoader("../data/training_set/", mode="train", augmentation=True,
-                           one_hot_encoding=True, palette=PALETTE, image_size=IMAGE_SIZE)
+    train_set = DataLoader("../data/training_set/",
+                           mode="train",
+                           augmentation=True,
+                           one_hot_encoding=True,
+                           palette=PALETTE,
+                           image_size=IMAGE_SIZE)
     train_gen = train_set.data_gen(BATCH_SIZE, shuffle=True)
-    valid_set = DataLoader("../data/training_set/", mode="valid", augmentation=True,
-                           one_hot_encoding=True, palette=PALETTE, image_size=IMAGE_SIZE)
+
+    valid_set = DataLoader("../data/training_set/",
+                           mode="valid",
+                           augmentation=True,
+                           one_hot_encoding=True,
+                           palette=PALETTE,
+                           image_size=IMAGE_SIZE)
     valid_gen = valid_set.data_gen(BATCH_SIZE, shuffle=True)
 
-    model = unet(IMAGE_SIZE)
+    # define model
+    model = unet()
     print("Model: ", model._name)
 
+    # optim
+    optimizers = {
+        "sgd": SGD(learning_rate=LEARNING_RATE, momentum=MOMENTUM, nesterov=True, decay=LEARNING_RATE/EPOCHS),
+        "adam": Adam(learning_rate=LEARNING_RATE)
+    }
     optimizer = optimizers[OPTIMIZER]
     print("Optimizer: ", optimizer._name)
+
+    # loss
+    loss = {
+        "jaccard": seglosses.jaccard_loss,
+        "dice": seglosses.dice_loss,
+        "bce": seglosses.bce_loss,
+        "bce_dice": seglosses.bce_dice_loss,
+        "focal": seglosses.focal_loss(gamma=GAMMA)
+    }
+
+    # metrix
+    metrics = {
+        "jaccard_index": seglosses.jaccard_index,
+        "dice_coeff": seglosses.dice_coeff
+    }
 
     model.compile(optimizer=optimizer,
                   loss=[loss[LOSS]],
                   metrics=[metrics[METRICS]])
 
+    # callbacks
     anne = ReduceLROnPlateau(monitor="loss",
                              factor=0.2,
-                             patience=10,
+                             patience=30,
                              verbose=1,
-                             min_lr=1e-5)
+                             min_lr=1e-7)
+
+    early = EarlyStopping(monitor="val_loss",
+                          patience=100,
+                          verbose=1)
 
     timestr = time_to_timestr()
     log_dir = "../logs/fit/{}".format(timestr)
-    tensorboard_callback = tf.keras.callbacks.TensorBoard(
-        log_dir=log_dir, write_images=True)
+    tensorboard_callback = TensorBoard(log_dir=log_dir,
+                                       write_images=True)
 
     os.mkdir("../models/{}".format(timestr))
-    file_path = "../models/%s/%s_jaccard={val_jaccard_index:.2f}_%s_ep{epoch:02d}_bsize%d_insize%s.hdf5" % (
+    file_path = "../models/%s/%s_%s_ep{epoch:02d}_bsize%d_insize%s.hdf5" % (
         timestr,
         model._name,
         optimizer._name,
@@ -84,7 +102,7 @@ def train():
     )
     checkpoint = ModelCheckpoint(file_path, verbose=1, save_best_only=True)
 
-    callbacks_list = [anne, checkpoint, tensorboard_callback]
+    callbacks_list = [early, anne, checkpoint, tensorboard_callback]
 
     print("="*100)
     print("TRAINING ...\n")

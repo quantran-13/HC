@@ -10,7 +10,7 @@ from PIL import Image
 import tensorflow as tf
 from tensorflow.keras.models import load_model
 
-import losses
+import seglosses
 
 
 def time_to_timestr():
@@ -20,14 +20,18 @@ def time_to_timestr():
 
 
 def load_model_from_path(file_path):
-    custom_objects = {"jaccard_loss": losses.jaccard_loss,
-                      "jaccard_index": losses.jaccard_index,
-                      "dice_loss": losses.dice_loss,
-                      "dice_coeff": losses.dice_coeff}
+    custom_objects = {"jaccard_loss": seglosses.jaccard_loss,
+                      "jaccard_index": seglosses.jaccard_index,
+                      "dice_loss": seglosses.dice_loss,
+                      "dice_coeff": seglosses.dice_coeff}
 
     model = load_model(file_path, custom_objects=custom_objects)
 
     return model
+
+
+def read_image(path):
+    return np.array(Image.open(path))
 
 
 def batch_2_numpy(data_batches):
@@ -38,14 +42,3 @@ def batch_2_numpy(data_batches):
         data = np.concatenate((data, batch_numpy[i]), axis=0)
 
     return data
-
-
-def read_predict_2_numpy(predicted_path):
-    pre_paths = glob.glob(predicted_path + "/*.png")
-    pre_images = np.array(Image.open(pre_paths[0]))/255.
-
-    for i in range(1, len(pre_paths)):
-        image = np.array(Image.open(pre_paths[i]))/255.
-        pre_images = np.dstack((pre_images, image))
-
-    return np.moveaxis(pre_images, -1, 0)
