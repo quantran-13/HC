@@ -23,7 +23,8 @@ def load_model_from_path(file_path):
     custom_objects = {"jaccard_loss": seglosses.jaccard_loss,
                       "jaccard_index": seglosses.jaccard_index,
                       "dice_loss": seglosses.dice_loss,
-                      "dice_coeff": seglosses.dice_coeff}
+                      "dice_coeff": seglosses.dice_coeff,
+                      "bce_dice_loss": seglosses.bce_dice_loss}
 
     model = load_model(file_path, custom_objects=custom_objects)
 

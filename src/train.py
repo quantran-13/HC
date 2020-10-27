@@ -46,14 +46,15 @@ def train():
     valid_gen = valid_set.data_gen(BATCH_SIZE, shuffle=True)
 
     # define model
-    model = unet()
+    model = unet(dropout_rate=DROPOUT_RATE, freeze=True, freeze_at=FREEZE_AT)
     print("Model: ", model._name)
 
     # optim
     optimizers = {
-        "sgd": SGD(learning_rate=LEARNING_RATE, momentum=MOMENTUM, nesterov=True, decay=LEARNING_RATE/EPOCHS),
+        "sgd": SGD(learning_rate=LEARNING_RATE, momentum=MOMENTUM, nesterov=True, decay=1e-2),
         "adam": Adam(learning_rate=LEARNING_RATE)
     }
+
     optimizer = optimizers[OPTIMIZER]
     print("Optimizer: ", optimizer._name)
 
@@ -66,15 +67,9 @@ def train():
         "focal": seglosses.focal_loss(gamma=GAMMA)
     }
 
-    # metrix
-    metrics = {
-        "jaccard_index": seglosses.jaccard_index,
-        "dice_coeff": seglosses.dice_coeff
-    }
-
     model.compile(optimizer=optimizer,
                   loss=[loss[LOSS]],
-                  metrics=[metrics[METRICS]])
+                  metrics=[seglosses.jaccard_index, seglosses.dice_coeff, seglosses.bce_loss])
 
     # callbacks
     anne = ReduceLROnPlateau(monitor="loss",

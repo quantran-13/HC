@@ -19,7 +19,7 @@ def generate_submission(model_path, predicted_path):
     for mask, (i, row) in zip(pre_images, df.iterrows()):
         assert 540 / mask.shape[0] == 800 / mask.shape[1]
 
-        (xx, yy), (MA, ma), angle = ellipse_fit_mask(mask)
+        (xx, yy), (MA, ma), angle = ellipse_fit_mask(mask.squeeze())
         factor = row["pixel size(mm)"] * 540 / mask.shape[0]
 
         center_x_mm = factor * yy
