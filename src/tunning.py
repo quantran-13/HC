@@ -60,6 +60,7 @@ def train(run_dir, hparams, train_gen, valid_gen):
 
     tensorboard_callback = TensorBoard(log_dir=run_dir,
                                        write_images=True)
+    tensorboard_hp_callback = hp.KerasCallback(run_dir, hparams)
 
     file_path = "../models/%s/%s/%s_%s_ep{epoch:02d}_bsize%d_insize%s.hdf5" % (
         run_dir.split("/")[-2],
@@ -73,7 +74,8 @@ def train(run_dir, hparams, train_gen, valid_gen):
                                                   [-2], run_dir.split(" /")[-1]))
     checkpoint = ModelCheckpoint(file_path, verbose=1, save_best_only=True)
 
-    callbacks_list = [early, anne, checkpoint, tensorboard_callback]
+    callbacks_list = [early, anne, checkpoint,
+                      tensorboard_callback, tensorboard_hp_callback]
 
     print("="*100)
     print("TRAINING ...\n")
@@ -89,6 +91,15 @@ def train(run_dir, hparams, train_gen, valid_gen):
     his = pd.DataFrame(history.history)
     his.to_csv(
         "../models/{}/{}".format(run_dir.split("/")[-2], run_dir.split("/")[-1]), index=False)
+
+
+def run(run_dir, hparams, train_gen, valid_gen):
+    with tf.summary.create_file_writer(run_dir).as_default():
+        hp.hparams(hparams)  # record the values used in this trial
+        train(run_dir,
+              hparams,
+              train_gen,
+              valid_gen)
 
 
 def main():
@@ -128,15 +139,21 @@ def main():
     HP_FREEZE_AT = hp.HParam(
         "freeze_at", hp.Discrete([16, 24, 32]))
 
+    METRIC_ACCURACY = 'accuracy'
+
     timestr = time_to_timestr()
     os.mkdir("../models/{}".format(timestr))
     log_dir = "../logs/fit/{}".format(timestr)
+
     with tf.summary.create_file_writer(log_dir).as_default():
         hp.hparams_config(
             hparams=[HP_DROPOUT,
                      HP_OPTIMIZER,
                      HP_LOSS,
-                     HP_FREEZE_AT]
+                     HP_FREEZE_AT],
+            metrics=[hp.Metric("jaccard_index", display_name='Jaccard Index'),
+                     hp.Metric("dice_coeff", display_name='Dice Coeff')
+                     ]
         )
 
     session_num = 0
@@ -154,10 +171,10 @@ def main():
                     run_name = "run-{}".format(session_num)
                     print("---- Starting trial: {} ----".format(run_name))
                     print({h.name: hparams[h] for h in hparams})
-                    train("{}/{}".format(log_dir, run_name),
-                          hparams,
-                          train_gen,
-                          valid_gen)
+                    run("{}/{}".format(log_dir, run_name),
+                        hparams,
+                        train_gen,
+                        valid_gen)
                     session_num += 1
 
 
