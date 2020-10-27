@@ -83,8 +83,8 @@ def train(run_dir, hparams, train_gen, valid_gen):
         BATCH_SIZE,
         IMAGE_SIZE
     )
-    os.mkdir("../models/{}/{}/history.csv".format(run_dir.split("/")
-                                                  [-2], run_dir.split(" /")[-1]))
+    os.mkdir("../models/{}/{}".format(run_dir.split("/")[-2],
+                                      run_dir.split("/")[-1]))
     checkpoint = ModelCheckpoint(file_path, verbose=1, save_best_only=True)
 
     callbacks_list = [early, anne, checkpoint,
