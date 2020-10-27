@@ -17,11 +17,24 @@ from tensorboard.plugins.hparams import api as hp
 tf.get_logger().setLevel("INFO")
 
 
+HP_DROPOUT = hp.HParam("dropout", hp.RealInterval(0.1, 0.2))
+# HP_LEARNING_RATE = hp.HParam(
+# "learning_rate", hp.Discrete([0.001, 0.0005, 0.0001]))
+HP_OPTIMIZER = hp.HParam(
+    "optimizer", hp.Discrete(["adam", "sgd", "rmsprop"]))
+HP_LOSS = hp.HParam(
+    "loss", hp.Discrete(["jaccard", "dice", "bce", "bce_dice"]))
+HP_FREEZE_AT = hp.HParam(
+    "freeze_at", hp.Discrete([16, 24, 32]))
+
+METRIC_ACCURACY = 'accuracy'
+
+
 def train(run_dir, hparams, train_gen, valid_gen):
     # define model
-    model = unet(dropout_rate=hparams["dropout"],
+    model = unet(dropout_rate=hparams[HP_DROPOUT],
                  freeze=True,
-                 freeze_at=hparams["freeze_at"])
+                 freeze_at=hparams[HP_FREEZE_AT])
     print("Model: ", model._name)
 
     # optim
@@ -30,7 +43,7 @@ def train(run_dir, hparams, train_gen, valid_gen):
         "adam": Adam(learning_rate=LEARNING_RATE, amsgrad=True, decay=1e-2),
         "rmsprop": RMSprop(learning_rate=LEARNING_RATE, momentum=MOMENTUM, decay=1e-2)
     }
-    optimizer = optimizers[hparams["optimizer"]]
+    optimizer = optimizers[hparams[HP_OPTIMIZER]]
     print("Optimizer: ", optimizer._name)
 
     # loss
@@ -41,7 +54,7 @@ def train(run_dir, hparams, train_gen, valid_gen):
         "bce_dice": seglosses.bce_dice_loss,
         "focal": seglosses.focal_loss(gamma=GAMMA)
     }
-    loss = losses[hparams["loss"]]
+    loss = losses[hparams[HP_LOSS]]
 
     model.compile(optimizer=optimizer,
                   loss=[loss],
@@ -128,18 +141,6 @@ def main():
                            palette=PALETTE,
                            image_size=IMAGE_SIZE)
     valid_gen = valid_set.data_gen(BATCH_SIZE, shuffle=True)
-
-    HP_DROPOUT = hp.HParam("dropout", hp.RealInterval(0.1, 0.2))
-    # HP_LEARNING_RATE = hp.HParam(
-    # "learning_rate", hp.Discrete([0.001, 0.0005, 0.0001]))
-    HP_OPTIMIZER = hp.HParam(
-        "optimizer", hp.Discrete(["adam", "sgd", "rmsprop"]))
-    HP_LOSS = hp.HParam(
-        "loss", hp.Discrete(["jaccard", "dice", "bce", "bce_dice"]))
-    HP_FREEZE_AT = hp.HParam(
-        "freeze_at", hp.Discrete([16, 24, 32]))
-
-    METRIC_ACCURACY = 'accuracy'
 
     timestr = time_to_timestr()
     os.mkdir("../models/{}".format(timestr))
