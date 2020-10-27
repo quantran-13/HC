@@ -19,9 +19,9 @@ tf.get_logger().setLevel("INFO")
 
 def train(run_dir, hparams, train_gen, valid_gen):
     # define model
-    model = unet(dropout_rate=hparams[HP_DROPOUT],
+    model = unet(dropout_rate=hparams["dropout"],
                  freeze=True,
-                 freeze_at=FREEZE_AT)
+                 freeze_at=hparams["freeze_at"])
     print("Model: ", model._name)
 
     # optim
@@ -30,7 +30,7 @@ def train(run_dir, hparams, train_gen, valid_gen):
         "adam": Adam(learning_rate=LEARNING_RATE, amsgrad=True, decay=1e-2),
         "rmsprop": RMSprop(learning_rate=LEARNING_RATE, momentum=MOMENTUM, decay=1e-2)
     }
-    optimizer = optimizers[hparams[HP_OPTIMIZER]]
+    optimizer = optimizers[hparams["optimizer"]]
     print("Optimizer: ", optimizer._name)
 
     # loss
@@ -41,7 +41,7 @@ def train(run_dir, hparams, train_gen, valid_gen):
         "bce_dice": seglosses.bce_dice_loss,
         "focal": seglosses.focal_loss(gamma=GAMMA)
     }
-    loss = losses[hparams[HP_LOSS]]
+    loss = losses[hparams["loss"]]
 
     model.compile(optimizer=optimizer,
                   loss=[loss],
