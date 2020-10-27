@@ -125,6 +125,8 @@ def main():
         "optimizer", hp.Discrete(["adam", "sgd", "rmsprop"]))
     HP_LOSS = hp.HParam(
         "loss", hp.Discrete(["jaccard", "dice", "bce", "bce_dice"]))
+    HP_FREEZE_AT = hp.HParam(
+        "freeze_at", hp.Discrete([16, 24, 32]))
 
     timestr = time_to_timestr()
     os.mkdir("../models/{}".format(timestr))
@@ -133,27 +135,30 @@ def main():
         hp.hparams_config(
             hparams=[HP_DROPOUT,
                      HP_OPTIMIZER,
-                     HP_LOSS]
+                     HP_LOSS,
+                     HP_FREEZE_AT]
         )
 
     session_num = 0
     for dropout_rate in (HP_DROPOUT.domain.min_value, HP_DROPOUT.domain.max_value):
         for optimizer in HP_OPTIMIZER.domain.values:
             for loss in HP_LOSS.domain.values:
-                hparams = {
-                    HP_DROPOUT: dropout_rate,
-                    HP_OPTIMIZER: optimizer,
-                    HP_LOSS: loss
-                }
+                for freeze_at in HP_FREEZE_AT.domain.values:
+                    hparams = {
+                        HP_DROPOUT: dropout_rate,
+                        HP_OPTIMIZER: optimizer,
+                        HP_LOSS: loss,
+                        HP_FREEZE_AT: freeze_at
+                    }
 
-                run_name = "run-{}".format(session_num)
-                print("---- Starting trial: {} ----".format(run_name))
-                print({h.name: hparams[h] for h in hparams})
-                train("{}/{}".format(log_dir, run_name),
-                      hparams,
-                      train_gen,
-                      valid_gen)
-                session_num += 1
+                    run_name = "run-{}".format(session_num)
+                    print("---- Starting trial: {} ----".format(run_name))
+                    print({h.name: hparams[h] for h in hparams})
+                    train("{}/{}".format(log_dir, run_name),
+                          hparams,
+                          train_gen,
+                          valid_gen)
+                    session_num += 1
 
 
 if __name__ == "__main__":
