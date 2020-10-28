@@ -102,8 +102,8 @@ def train(run_dir, hparams, train_gen, valid_gen):
                         use_multiprocessing=True)
 
     his = pd.DataFrame(history.history)
-    his.to_csv(
-        "../models/{}/{}".format(run_dir.split("/")[-2], run_dir.split("/")[-1]), index=False)
+    his.to_csv("../models/{}/{}/history.csv".format(run_dir.split("/")[-2],
+                                                    run_dir.split("/")[-1]), index=False)
 
 
 def run(run_dir, hparams, train_gen, valid_gen):
