@@ -20,14 +20,27 @@ tf.get_logger().setLevel("INFO")
 HP_DROPOUT = hp.HParam("dropout", hp.RealInterval(0.1, 0.2))
 # HP_LEARNING_RATE = hp.HParam(
 # "learning_rate", hp.Discrete([0.001, 0.0005, 0.0001]))
-HP_OPTIMIZER = hp.HParam(
-    "optimizer", hp.Discrete(["adam", "sgd", "rmsprop"]))
-HP_LOSS = hp.HParam(
-    "loss", hp.Discrete(["jaccard", "dice", "bce", "bce_dice"]))
-HP_FREEZE_AT = hp.HParam(
-    "freeze_at", hp.Discrete([16, 24, 32]))
+HP_OPTIMIZER = hp.HParam("optimizer", hp.Discrete(["adam", "sgd", "rmsprop"]))
+HP_LOSS = hp.HParam("loss", hp.Discrete(
+    ["jaccard", "dice", "bce", "bce_dice"]))
+HP_FREEZE_AT = hp.HParam("freeze_at", hp.Discrete([16, 24, 32]))
 
-METRIC_ACCURACY = 'accuracy'
+
+HPARAMS = [
+    HP_DROPOUT,
+    HP_OPTIMIZER,
+    HP_LOSS,
+    HP_FREEZE_AT
+]
+
+METRICS = [
+    hp.Metric("epoch_jaccard_index",
+              group="validation",
+              display_name="Jaccard Index (val.)"),
+    hp.Metric("epoch_dice_coeff",
+              group="validation",
+              display_name="Dice Coeff (val.)")
+]
 
 
 def train(run_dir, hparams, train_gen, valid_gen):
@@ -73,7 +86,7 @@ def train(run_dir, hparams, train_gen, valid_gen):
 
     tensorboard_callback = TensorBoard(log_dir=run_dir,
                                        write_images=True)
-    tensorboard_hp_callback = hp.KerasCallback(run_dir, hparams)
+    hparams_callback = hp.KerasCallback(run_dir, hparams)
 
     file_path = "../models/%s/%s/%s_%s_ep{epoch:02d}_bsize%d_insize%s.hdf5" % (
         run_dir.split("/")[-2],
@@ -87,8 +100,13 @@ def train(run_dir, hparams, train_gen, valid_gen):
                                       run_dir.split("/")[-1]))
     checkpoint = ModelCheckpoint(file_path, verbose=1, save_best_only=True)
 
-    callbacks_list = [early, anne, checkpoint,
-                      tensorboard_callback, tensorboard_hp_callback]
+    callbacks_list = [
+        early,
+        anne,
+        checkpoint,
+        tensorboard_callback,
+        hparams_callback
+    ]
 
     print("="*100)
     print("TRAINING ...\n")
@@ -106,26 +124,7 @@ def train(run_dir, hparams, train_gen, valid_gen):
                                                     run_dir.split("/")[-1]), index=False)
 
 
-def run(run_dir, hparams, train_gen, valid_gen):
-    with tf.summary.create_file_writer(run_dir).as_default():
-        hp.hparams(hparams)  # record the values used in this trial
-        train(run_dir,
-              hparams,
-              train_gen,
-              valid_gen)
-
-
-def main():
-    if not os.path.exists("../models"):
-        os.mkdir("../models")
-
-    print("Epochs: {}\t\tBatch size: {}\t\tInput size: {}".format(EPOCHS,
-                                                                  BATCH_SIZE,
-                                                                  IMAGE_SIZE))
-
-    # Datasets
-    print("="*100)
-    print("LOADING DATA ...\n")
+def prepare_data():
     train_set = DataLoader("../data/training_set/",
                            mode="train",
                            augmentation=True,
@@ -142,20 +141,28 @@ def main():
                            image_size=IMAGE_SIZE)
     valid_gen = valid_set.data_gen(BATCH_SIZE, shuffle=True)
 
+    return (train_gen, valid_gen)
+
+
+def main():
+    if not os.path.exists("../models"):
+        os.mkdir("../models")
+
+    print("Epochs: {}\t\tBatch size: {}\t\tInput size: {}".format(EPOCHS,
+                                                                  BATCH_SIZE,
+                                                                  IMAGE_SIZE))
+
+    # Datasets
+    print("="*100)
+    print("LOADING DATA ...\n")
+    (train_gen, valid_gen) = prepare_data()
+
     timestr = time_to_timestr()
     os.mkdir("../models/{}".format(timestr))
     log_dir = "../logs/fit/{}".format(timestr)
 
     with tf.summary.create_file_writer(log_dir).as_default():
-        hp.hparams_config(
-            hparams=[HP_DROPOUT,
-                     HP_OPTIMIZER,
-                     HP_LOSS,
-                     HP_FREEZE_AT],
-            metrics=[hp.Metric("jaccard_index", display_name='Jaccard Index'),
-                     hp.Metric("dice_coeff", display_name='Dice Coeff')
-                     ]
-        )
+        hp.hparams_config(hparams=HPARAMS, metrics=METRICS)
 
     session_num = 0
     for dropout_rate in (HP_DROPOUT.domain.min_value, HP_DROPOUT.domain.max_value):
@@ -172,10 +179,10 @@ def main():
                     run_name = "run-{}".format(session_num)
                     print("---- Starting trial: {} ----".format(run_name))
                     print({h.name: hparams[h] for h in hparams})
-                    run("{}/{}".format(log_dir, run_name),
-                        hparams,
-                        train_gen,
-                        valid_gen)
+                    train("{}/{}".format(log_dir, run_name),
+                          hparams,
+                          train_gen,
+                          valid_gen)
                     session_num += 1
 
 
