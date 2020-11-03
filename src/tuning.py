@@ -17,22 +17,22 @@ from tensorboard.plugins.hparams import api as hp
 tf.get_logger().setLevel("INFO")
 
 
+HP_FREEZE_AT = hp.HParam("freeze_at", hp.Discrete([16]))  # , 24, 32]))
 HP_DROPOUT = hp.HParam("dropout", hp.RealInterval(0.1, 0.2))
 # HP_LEARNING_RATE = hp.HParam("learning_rate", hp.Discrete([0.001, 0.0005, 0.0001]))
 # , "adam", "rmsprop"]))
 HP_OPTIMIZER = hp.HParam("optimizer", hp.Discrete(["sgd"]))
 # , "jaccard", "dice", "bce", "bce_dice"]))
 HP_LOSS = hp.HParam("loss", hp.Discrete(["focal"]))
-HP_FREEZE_AT = hp.HParam("freeze_at", hp.Discrete([16]))  # , 24, 32]))
-HP_GAMMA = hp.HParam("focal_gamma", hp.Discrete([0.5, 1, 2, 5]))
+# HP_GAMMA = hp.HParam("focal_gamma", hp.Discrete([0.5, 1., 2., 5.]))
 
 
 HPARAMS = [
+    HP_FREEZE_AT,
     HP_DROPOUT,
     HP_OPTIMIZER,
     HP_LOSS,
-    HP_FREEZE_AT,
-    HP_GAMMA
+    # HP_GAMMA,
 ]
 
 METRICS = [
@@ -67,7 +67,7 @@ def train(run_dir, hparams, train_gen, valid_gen):
         "dice": seglosses.dice_loss,
         "bce": seglosses.bce_loss,
         "bce_dice": seglosses.bce_dice_loss,
-        "focal": seglosses.focal_loss(gamma=hparams[HP_GAMMA])
+        "focal": seglosses.focal_loss()  # (gamma=hparams[HP_GAMMA])
     }
     loss = losses[hparams[HP_LOSS]]
 
@@ -83,7 +83,7 @@ def train(run_dir, hparams, train_gen, valid_gen):
                              min_lr=1e-7)
 
     early = EarlyStopping(monitor="val_loss",
-                          patience=100,
+                          patience=50,
                           verbose=1)
 
     tensorboard_callback = TensorBoard(log_dir=run_dir,
@@ -167,15 +167,16 @@ def main():
         hp.hparams_config(hparams=HPARAMS, metrics=METRICS)
 
     session_num = 0
-    for dropout_rate in (HP_DROPOUT.domain.min_value, HP_DROPOUT.domain.max_value):
-        for optimizer in HP_OPTIMIZER.domain.values:
-            for loss in HP_LOSS.domain.values:
-                for freeze_at in HP_FREEZE_AT.domain.values:
+    for freeze_at in HP_FREEZE_AT.domain.values:
+        for dropout_rate in (HP_DROPOUT.domain.min_value, HP_DROPOUT.domain.max_value):
+            for optimizer in HP_OPTIMIZER.domain.values:
+                for loss in HP_LOSS.domain.values:
                     hparams = {
                         HP_DROPOUT: dropout_rate,
                         HP_OPTIMIZER: optimizer,
                         HP_LOSS: loss,
-                        HP_FREEZE_AT: freeze_at
+                        HP_FREEZE_AT: freeze_at,
+                        # HP_GAMMA: gamma,
                     }
 
                     run_name = "run-{}".format(session_num)

@@ -373,11 +373,11 @@ class DataLoader(object):
             image_f, mask_f = self.normalize_data(image_f, mask_f)
 
             if self.augmentation:
+                image_f, mask_f = self.cut_roi(image_f, mask_f)
                 image_f, mask_f = self.change_brightness(image_f, mask_f)
                 image_f, mask_f = self.flip_horizontally(image_f, mask_f)
                 image_f, mask_f = self.rotate(image_f, mask_f)
                 image_f, mask_f = self.shift(image_f, mask_f)
-                image_f, mask_f = self.cut_roi(image_f, mask_f)
 
             if self.one_hot_encoding:
                 if self.palette is None:
