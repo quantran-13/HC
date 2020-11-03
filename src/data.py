@@ -3,7 +3,7 @@ import random
 import numpy as np
 import pandas as pd
 from PIL import Image
-# import matplotlib.pyplot as plt
+import matplotlib.pyplot as plt
 
 import cv2
 from sklearn.model_selection import train_test_split
@@ -266,7 +266,7 @@ class DataLoader(object):
         tensor = self.reorder_channel(tensor)
 
         if types == "rotate":
-            tensor = tf.keras.preprocessing.image.random_rotation(tensor, 30)
+            tensor = tf.keras.preprocessing.image.random_rotation(tensor, 15)
         elif types == "shift":
             tensor = tf.keras.preprocessing.image.random_shift(
                 tensor, 0.3, 0.3)
@@ -320,19 +320,64 @@ class DataLoader(object):
 
         return image, mask
 
+    def _equalize_histogram(self, image):
+        clahe = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(8, 8))
+        img_his_eq = clahe.apply(image.numpy().astype(np.uint8))
+        image = np.expand_dims(img_his_eq, axis=-1)
+
+        return tf.convert_to_tensor(image, dtype=tf.float32)
+
+    def equalize_histogram(self, image, mask):
+        """
+            Apply CLAHE (Contrast Limited Adaptive Histogram Equalization)
+        """
+        cond_he = tf.cast(tf.random.uniform(
+            [], maxval=2, dtype=tf.int32), tf.bool)
+        image = tf.cond(cond_he,
+                        lambda: tf.image.random_contrast(image, 0.1, 0.5),
+                        lambda: tf.identity(image))
+
+        return image, mask
+
+    def mask_generator(self, anno):
+        ret, thresh = cv2.threshold(anno.numpy().astype(np.uint8), 127, 255, 0)
+        contours, hierarchy = cv2.findContours(
+            thresh, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
+        ellipse = cv2.fitEllipse(contours[0])
+
+        mask = cv2.ellipse(anno.numpy().astype(np.uint8),
+                           ellipse, (255, 255, 255), -1)
+
+        return tf.convert_to_tensor(mask, dtype=tf.float32)
+
+    def cut_roi(self, image, anno):
+        cond_cut = tf.cast(tf.random.uniform(
+            [], maxval=2, dtype=tf.int32), tf.bool)
+
+        mask = tf.cond(cond_cut,
+                       lambda: self.mask_generator(anno),
+                       lambda: tf.identity(anno))
+
+        image = tf.cond(cond_cut,
+                        lambda: (image*mask)/255.,
+                        lambda: tf.identity(image))
+
+        return image, mask
+
     @tf.function
     def map_function(self, images_path, masks_path):
         image, mask = self.parse_data(images_path, masks_path)
 
         def augmentation_func(image_f, mask_f):
+            image_f, mask_f = self.equalize_histogram(image_f, mask_f)
             image_f, mask_f = self.normalize_data(image_f, mask_f)
 
             if self.augmentation:
                 image_f, mask_f = self.change_brightness(image_f, mask_f)
-                image_f, mask_f = self.change_contrast(image_f, mask_f)
                 image_f, mask_f = self.flip_horizontally(image_f, mask_f)
                 image_f, mask_f = self.rotate(image_f, mask_f)
                 image_f, mask_f = self.shift(image_f, mask_f)
+                image_f, mask_f = self.cut_roi(image_f, mask_f)
 
             if self.one_hot_encoding:
                 if self.palette is None:

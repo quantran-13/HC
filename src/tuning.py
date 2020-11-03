@@ -18,19 +18,21 @@ tf.get_logger().setLevel("INFO")
 
 
 HP_DROPOUT = hp.HParam("dropout", hp.RealInterval(0.1, 0.2))
-# HP_LEARNING_RATE = hp.HParam(
-# "learning_rate", hp.Discrete([0.001, 0.0005, 0.0001]))
-HP_OPTIMIZER = hp.HParam("optimizer", hp.Discrete(["adam", "sgd", "rmsprop"]))
-HP_LOSS = hp.HParam("loss", hp.Discrete(
-    ["jaccard", "dice", "bce", "bce_dice"]))
-HP_FREEZE_AT = hp.HParam("freeze_at", hp.Discrete([16, 24, 32]))
+# HP_LEARNING_RATE = hp.HParam("learning_rate", hp.Discrete([0.001, 0.0005, 0.0001]))
+# , "adam", "rmsprop"]))
+HP_OPTIMIZER = hp.HParam("optimizer", hp.Discrete(["sgd"]))
+# , "jaccard", "dice", "bce", "bce_dice"]))
+HP_LOSS = hp.HParam("loss", hp.Discrete(["focal"]))
+HP_FREEZE_AT = hp.HParam("freeze_at", hp.Discrete([16]))  # , 24, 32]))
+HP_GAMMA = hp.HParam("focal_gamma", hp.Discrete([0.5, 1, 2, 5]))
 
 
 HPARAMS = [
     HP_DROPOUT,
     HP_OPTIMIZER,
     HP_LOSS,
-    HP_FREEZE_AT
+    HP_FREEZE_AT,
+    HP_GAMMA
 ]
 
 METRICS = [
@@ -65,7 +67,7 @@ def train(run_dir, hparams, train_gen, valid_gen):
         "dice": seglosses.dice_loss,
         "bce": seglosses.bce_loss,
         "bce_dice": seglosses.bce_dice_loss,
-        "focal": seglosses.focal_loss(gamma=GAMMA)
+        "focal": seglosses.focal_loss(gamma=hparams[HP_GAMMA])
     }
     loss = losses[hparams[HP_LOSS]]
 
