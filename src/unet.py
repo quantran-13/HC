@@ -86,7 +86,7 @@ def unet(input_size=(216, 320, 1), n_filters=64, batchnorm=True, dropout_rate=0.
 
     if freeze:
         fine_tune_at = freeze_at
-        model_tmp = load_model_from_path("../models/model.hdf5")
+        model_tmp = load_model_from_path("../models/model_unet.hdf5")
 
         for layer, layer_tmp in zip(model.layers[:fine_tune_at], model_tmp.layers[:fine_tune_at]):
             layer.set_weights(layer_tmp.get_weights())
@@ -97,3 +97,5 @@ def unet(input_size=(216, 320, 1), n_filters=64, batchnorm=True, dropout_rate=0.
 
 if __name__ == "__main__":
     model = unet()
+    dot_img_file = '../images/unet_1.png'
+    tf.keras.utils.plot_model(model, to_file=dot_img_file, show_shapes=True)

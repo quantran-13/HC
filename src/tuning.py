@@ -17,14 +17,14 @@ from tensorboard.plugins.hparams import api as hp
 tf.get_logger().setLevel("INFO")
 
 
-HP_FREEZE_AT = hp.HParam("freeze_at", hp.Discrete([16]))  # , 24, 32]))
+HP_FREEZE_AT = hp.HParam("freeze_at", hp.Discrete([16]))  # , 24, 32
 HP_DROPOUT = hp.HParam("dropout", hp.RealInterval(0.1, 0.2))
 # HP_LEARNING_RATE = hp.HParam("learning_rate", hp.Discrete([0.001, 0.0005, 0.0001]))
-# , "adam", "rmsprop"]))
-HP_OPTIMIZER = hp.HParam("optimizer", hp.Discrete(["sgd"]))
-# , "jaccard", "dice", "bce", "bce_dice"]))
+HP_OPTIMIZER = hp.HParam("optimizer", hp.Discrete(
+    ["sgd"]))  # , "adam", "rmsprop"
+# , "jaccard", "dice", "bce", "bce_dice"
 HP_LOSS = hp.HParam("loss", hp.Discrete(["focal"]))
-# HP_GAMMA = hp.HParam("focal_gamma", hp.Discrete([0.5, 1., 2., 5.]))
+HP_GAMMA = hp.HParam("focal_gamma", hp.Discrete([0.5, 1., 2., 5.]))
 
 
 HPARAMS = [
@@ -78,7 +78,7 @@ def train(run_dir, hparams, train_gen, valid_gen):
     # callbacks
     anne = ReduceLROnPlateau(monitor="loss",
                              factor=0.2,
-                             patience=30,
+                             patience=15,
                              verbose=1,
                              min_lr=1e-7)
 
@@ -171,22 +171,23 @@ def main():
         for dropout_rate in (HP_DROPOUT.domain.min_value, HP_DROPOUT.domain.max_value):
             for optimizer in HP_OPTIMIZER.domain.values:
                 for loss in HP_LOSS.domain.values:
-                    hparams = {
-                        HP_DROPOUT: dropout_rate,
-                        HP_OPTIMIZER: optimizer,
-                        HP_LOSS: loss,
-                        HP_FREEZE_AT: freeze_at,
-                        # HP_GAMMA: gamma,
-                    }
+                    for gamma in HP_GAMMA.domain.values:
+                        hparams = {
+                            HP_DROPOUT: dropout_rate,
+                            HP_OPTIMIZER: optimizer,
+                            HP_LOSS: loss,
+                            HP_FREEZE_AT: freeze_at,
+                            HP_GAMMA: gamma,
+                        }
 
-                    run_name = "run-{}".format(session_num)
-                    print("---- Starting trial: {} ----".format(run_name))
-                    print({h.name: hparams[h] for h in hparams})
-                    train("{}/{}".format(log_dir, run_name),
-                          hparams,
-                          train_gen,
-                          valid_gen)
-                    session_num += 1
+                        run_name = "run-{}".format(session_num)
+                        print("---- Starting trial: {} ----".format(run_name))
+                        print({h.name: hparams[h] for h in hparams})
+                        train("{}/{}".format(log_dir, run_name),
+                              hparams,
+                              train_gen,
+                              valid_gen)
+                        session_num += 1
 
 
 if __name__ == "__main__":
