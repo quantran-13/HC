@@ -1,5 +1,6 @@
 from tensorflow.keras.callbacks import EarlyStopping, ReduceLROnPlateau, ModelCheckpoint, TensorBoard, LearningRateScheduler
-from tensorflow.keras.optimizers import SGD, Adam
+from tensorflow.keras.optimizers import SGD, Adam, RMSprop
+
 import os
 import datetime
 import pandas as pd
@@ -8,6 +9,7 @@ from tqdm import tqdm
 import seglosses
 from config import *
 from unet import unet
+from architect.DilateAttentionUnet import dilate_attention_unet
 from data import DataLoader
 from utils import time_to_timestr
 
@@ -46,13 +48,14 @@ def train():
     valid_gen = valid_set.data_gen(BATCH_SIZE, shuffle=True)
 
     # define model
-    model = unet(dropout_rate=DROPOUT_RATE, freeze=True, freeze_at=FREEZE_AT)
+    model = dilate_attention_unet(dropout_rate=DROPOUT_RATE)
     print("Model: ", model._name)
 
     # optim
     optimizers = {
         "sgd": SGD(learning_rate=LEARNING_RATE, momentum=MOMENTUM, nesterov=True, decay=1e-2),
-        "adam": Adam(learning_rate=LEARNING_RATE)
+        "adam": Adam(learning_rate=LEARNING_RATE, amsgrad=True, decay=1e-2),
+        "rmsprop": RMSprop(learning_rate=LEARNING_RATE, momentum=MOMENTUM, decay=1e-2)
     }
 
     optimizer = optimizers[OPTIMIZER]
