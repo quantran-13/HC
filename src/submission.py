@@ -41,6 +41,7 @@ def generate_submission(model_path, predicted_path):
     df["semi_axes_b_mm"] = axes_b
     df["angle_rad"] = angles
 
+    print("MAKE SUBMISSION CSV ...")
     df.to_csv(
         "../submission/{}.csv".format(predicted_path.split("/")[-1]), index=False)
 

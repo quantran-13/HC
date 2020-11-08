@@ -24,7 +24,7 @@ def eval(model_path):
     valid_gen = valid_set.data_gen(BATCH_SIZE, shuffle=True)
 
     result = model.evaluate(valid_gen, verbose=0)
-    print("\tModel'score: {} \n\t Loss: {}.".format(result[1], result[0]))
+    print("Model'score: {} \nLoss: {}.".format(result[1], result[0]))
 
 
 def predict(model_path, save_path="../data/predcited"):

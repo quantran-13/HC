@@ -1,10 +1,8 @@
-from tensorflow.keras.callbacks import EarlyStopping, ReduceLROnPlateau, ModelCheckpoint, TensorBoard, LearningRateScheduler
-from tensorflow.keras.optimizers import SGD, Adam, RMSprop
-
 import os
 import datetime
 import pandas as pd
 from tqdm import tqdm
+import math
 
 import seglosses
 from config import *
@@ -14,6 +12,9 @@ from data import DataLoader
 from utils import time_to_timestr
 
 import tensorflow as tf
+from tensorflow.keras.optimizers import SGD, Adam, RMSprop
+from tensorflow.keras.callbacks import EarlyStopping, ReduceLROnPlateau, ModelCheckpoint, TensorBoard, LearningRateScheduler
+from tensorflow.keras.optimizers.schedules import InverseTimeDecay
 tf.get_logger().setLevel("INFO")
 
 
@@ -48,14 +49,21 @@ def train():
     valid_gen = valid_set.data_gen(BATCH_SIZE, shuffle=True)
 
     # define model
-    model = dilate_attention_unet(dropout_rate=DROPOUT_RATE)
+    model = dilate_attention_unet(dropout_rate=DROPOUT_RATE,
+                                  freeze=FREEZE,
+                                  freeze_at=FREEZE_AT)
     print("Model: ", model._name)
 
     # optim
+    lr_schedule = InverseTimeDecay(LEARNING_RATE,
+                                   decay_steps=math.ceil(799/BATCH_SIZE),
+                                   decay_rate=1,
+                                   staircase=False)
+
     optimizers = {
-        "sgd": SGD(learning_rate=LEARNING_RATE, momentum=MOMENTUM, nesterov=True, decay=1e-2),
-        "adam": Adam(learning_rate=LEARNING_RATE, amsgrad=True, decay=1e-2),
-        "rmsprop": RMSprop(learning_rate=LEARNING_RATE, momentum=MOMENTUM, decay=1e-2)
+        "sgd": SGD(learning_rate=lr_schedule, momentum=MOMENTUM, nesterov=True),
+        "adam": Adam(learning_rate=lr_schedule, amsgrad=True),
+        "rmsprop": RMSprop(learning_rate=lr_schedule, momentum=MOMENTUM)
     }
 
     optimizer = optimizers[OPTIMIZER]

@@ -7,8 +7,8 @@ GAMMA = 2.0  # focal loss gamma
 
 OPTIMIZER = "sgd"
 
-FREEZE = False
-FREEZE_AT = 0
+FREEZE = True
+FREEZE_AT = 16
 
 # hyperparameter
 DROPOUT_RATE = 0.1
@@ -16,5 +16,5 @@ MOMENTUM = 0.9
 LEARNING_RATE = 1e-3
 
 IMAGE_SIZE = (216, 320, 1)
-BATCH_SIZE = 32
-EPOCHS = 20
+BATCH_SIZE = 8
+EPOCHS = 500
