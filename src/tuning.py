@@ -59,9 +59,9 @@ def train(run_dir, hparams, train_gen, valid_gen):
                                    staircase=False)
 
     optimizers = {
-        "sgd": SGD(learning_rate=LEARNING_RATE, momentum=MOMENTUM, nesterov=True, decay=1e-2),
-        "adam": Adam(learning_rate=LEARNING_RATE, amsgrad=True, decay=1e-2),
-        "rmsprop": RMSprop(learning_rate=LEARNING_RATE, momentum=MOMENTUM, decay=1e-2)
+        "sgd": SGD(learning_rate=lr_schedule, momentum=MOMENTUM, nesterov=True),
+        "adam": Adam(learning_rate=lr_schedule, amsgrad=True),
+        "rmsprop": RMSprop(learning_rate=lr_schedule, momentum=MOMENTUM)
     }
     optimizer = optimizers[hparams[HP_OPTIMIZER]]
     print("Optimizer: ", optimizer._name)
