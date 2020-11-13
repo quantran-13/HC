@@ -7,8 +7,8 @@ GAMMA = 2.0  # focal loss gamma
 
 OPTIMIZER = "sgd"
 
-FREEZE = True
-FREEZE_AT = 16
+FREEZE = False
+FREEZE_AT = 0
 
 # hyperparameter
 DROPOUT_RATE = 0.1

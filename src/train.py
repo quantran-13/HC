@@ -18,6 +18,17 @@ from tensorflow.keras.optimizers.schedules import InverseTimeDecay
 tf.get_logger().setLevel("INFO")
 
 
+def lr_step_decay(epoch, lr):
+    """
+    Step decay lr: learning_rate = initial_lr * drop_rate^floor(epoch / epochs_drop)
+    """
+    initial_learning_rate = LEARNING_RATE
+    drop_rate = 0.5
+    epochs_drop = 10.0
+
+    return initial_learning_rate * math.pow(drop_rate, math.floor(epoch/epochs_drop))
+
+
 def train():
     if not os.path.exists("../models"):
         os.mkdir("../models")
@@ -55,15 +66,10 @@ def train():
     print("Model: ", model._name)
 
     # optim
-    lr_schedule = InverseTimeDecay(LEARNING_RATE,
-                                   decay_steps=math.ceil(799/BATCH_SIZE),
-                                   decay_rate=1,
-                                   staircase=False)
-
     optimizers = {
-        "sgd": SGD(learning_rate=lr_schedule, momentum=MOMENTUM, nesterov=True),
-        "adam": Adam(learning_rate=lr_schedule, amsgrad=True),
-        "rmsprop": RMSprop(learning_rate=lr_schedule, momentum=MOMENTUM)
+        "sgd": SGD(learning_rate=LEARNING_RATE, momentum=MOMENTUM, nesterov=True),
+        "adam": Adam(learning_rate=LEARNING_RATE, amsgrad=True),
+        "rmsprop": RMSprop(learning_rate=LEARNING_RATE, momentum=MOMENTUM)
     }
 
     optimizer = optimizers[OPTIMIZER]
@@ -83,6 +89,9 @@ def train():
                   metrics=[seglosses.jaccard_index, seglosses.dice_coeff, seglosses.bce_loss])
 
     # callbacks
+    lr_schedule = LearningRateScheduler(lr_step_decay,
+                                        verbose=1)
+
     anne = ReduceLROnPlateau(monitor="loss",
                              factor=0.2,
                              patience=30,
@@ -90,7 +99,7 @@ def train():
                              min_lr=1e-7)
 
     early = EarlyStopping(monitor="val_loss",
-                          patience=100,
+                          patience=50,
                           verbose=1)
 
     timestr = time_to_timestr()
@@ -108,7 +117,13 @@ def train():
     )
     checkpoint = ModelCheckpoint(file_path, verbose=1, save_best_only=True)
 
-    callbacks_list = [early, anne, checkpoint, tensorboard_callback]
+    callbacks_list = [
+        lr_schedule,
+        early,
+        anne,
+        checkpoint,
+        tensorboard_callback
+    ]
 
     print("="*100)
     print("TRAINING ...\n")
