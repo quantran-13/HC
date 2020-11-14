@@ -237,9 +237,9 @@ class DataLoader(object):
         if self.save:
             idx = random.randint(0, 30000)
             cv2.imwrite("../data/aug/brightness_{}.png".format(idx),
-                        image.numpy().squeeze()*255)
+                        image.numpy().squeeze() * 255)
             cv2.imwrite("../data/aug/brightness_{}_mask.png".format(idx),
-                        mask.numpy().squeeze()*255)
+                        mask.numpy().squeeze() * 255)
 
         return image, mask
 
@@ -252,6 +252,12 @@ class DataLoader(object):
         image = tf.cond(cond_contrast,
                         lambda: tf.image.random_contrast(image, 0.1, 0.5),
                         lambda: tf.identity(image))
+        if self.save:
+            idx = random.randint(0, 30000)
+            cv2.imwrite("../data/aug/contrast_{}.png".format(idx),
+                        image.numpy().squeeze() * 255)
+            cv2.imwrite("../data/aug/contrast_{}_mask.png".format(idx),
+                        mask.numpy().squeeze() * 255)
 
         return image, mask
 
@@ -266,9 +272,9 @@ class DataLoader(object):
         if self.save:
             idx = random.randint(0, 30000)
             cv2.imwrite("../data/aug/flip_horizontally_{}.png".format(idx),
-                        image.numpy().squeeze()*255)
-            cv2.imwrite(
-                "../data/aug/flip_horizontally_{}_mask.png".format(idx), mask.numpy().squeeze()*255)
+                        image.numpy().squeeze() * 255)
+            cv2.imwrite("../data/aug/flip_horizontally_{}_mask.png".format(idx),
+                        mask.numpy().squeeze() * 255)
 
         return image, mask
 
@@ -310,9 +316,9 @@ class DataLoader(object):
         if self.save:
             idx = random.randint(0, 30000)
             cv2.imwrite("../data/aug/rotate_{}.png".format(idx),
-                        image.numpy().squeeze()*255)
+                        image.numpy().squeeze() * 255)
             cv2.imwrite("../data/aug/rotate_{}_mask.png".format(idx),
-                        mask.numpy().squeeze()*255)
+                        mask.numpy().squeeze() * 255)
 
         return image, mask
 
@@ -331,9 +337,9 @@ class DataLoader(object):
         if self.save:
             idx = random.randint(0, 30000)
             cv2.imwrite("../data/aug/shift_{}.png".format(idx),
-                        image.numpy().squeeze()*255)
+                        image.numpy().squeeze() * 255)
             cv2.imwrite("../data/aug/shift_{}_mask.png".format(idx),
-                        mask.numpy().squeeze()*255)
+                        mask.numpy().squeeze() * 255)
 
         return image, mask
 
@@ -352,9 +358,9 @@ class DataLoader(object):
         if self.save:
             idx = random.randint(0, 30000)
             cv2.imwrite("../data/aug/zoom_{}.png".format(idx),
-                        image.numpy().squeeze()*255)
+                        image.numpy().squeeze() * 255)
             cv2.imwrite("../data/aug/zoom_{}_mask.png".format(idx),
-                        mask.numpy().squeeze()*255)
+                        mask.numpy().squeeze() * 255)
 
         return image, mask
 
@@ -410,9 +416,9 @@ class DataLoader(object):
         if self.save:
             idx = random.randint(0, 30000)
             cv2.imwrite("../data/aug/cut_roi_{}.png".format(idx),
-                        image.numpy().squeeze()*255)
+                        image.numpy().squeeze() * 255)
             cv2.imwrite("../data/aug/cut_roi_{}_mask.png".format(idx),
-                        mask.numpy().squeeze()*255)
+                        mask.numpy().squeeze() * 255)
 
         return image, mask
 
@@ -422,7 +428,7 @@ class DataLoader(object):
 
         def augmentation_func(image_f, mask_f):
             image_f, mask_f = self.equalize_histogram(image_f, mask_f)
-            image_f, mask_f = self.normalize_data(image_f, mask_f)
+            # image_f, mask_f = self.normalize_data(image_f, mask_f)
 
             if self.augmentation:
                 if self.compose:
@@ -495,9 +501,10 @@ if __name__ == "__main__":
         generate_train_valid_indices()
         generate_data_csv()
 
-    data = DataLoader("../data/training_set", augmentation=True,
-                      one_hot_encoding=True, palette=[255], save=True).data_gen(32)
+    data = DataLoader("../data/training_set",
+                      one_hot_encoding=True,
+                      palette=[255],
+                      save=True).data_gen(32)
+
     for image, mask in data:
-        print(np.unique(image.numpy()))
-        print(np.unique(mask.numpy()))
-        break
+        pass

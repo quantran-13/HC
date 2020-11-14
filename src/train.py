@@ -46,6 +46,7 @@ def train():
     train_set = DataLoader("../data/training_set/",
                            mode="train",
                            augmentation=True,
+                           compose=False,
                            one_hot_encoding=True,
                            palette=PALETTE,
                            image_size=IMAGE_SIZE)
@@ -54,6 +55,7 @@ def train():
     valid_set = DataLoader("../data/training_set/",
                            mode="valid",
                            augmentation=True,
+                           compose=False,
                            one_hot_encoding=True,
                            palette=PALETTE,
                            image_size=IMAGE_SIZE)
@@ -94,12 +96,12 @@ def train():
 
     anne = ReduceLROnPlateau(monitor="loss",
                              factor=0.2,
-                             patience=30,
+                             patience=20,
                              verbose=1,
                              min_lr=1e-7)
 
     early = EarlyStopping(monitor="val_loss",
-                          patience=50,
+                          patience=35,
                           verbose=1)
 
     timestr = time_to_timestr()
@@ -120,7 +122,7 @@ def train():
     callbacks_list = [
         lr_schedule,
         early,
-        anne,
+        # anne,
         checkpoint,
         tensorboard_callback
     ]
