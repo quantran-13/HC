@@ -81,9 +81,6 @@ def unet(input_size=(216, 320, 1), n_filters=64, batchnorm=True, dropout_rate=0.
     outputs = Conv2D(1, (1, 1), activation='sigmoid')(c9)
     model = Model(inputs=[inputs], outputs=[outputs], name="UNet")
 
-    # model.summary()
-    # tf.keras.utils.plot_model(model, show_shapes=True)
-
     if freeze:
         fine_tune_at = freeze_at
         model_tmp = load_model_from_path("../models/model_unet.hdf5")
@@ -91,6 +88,9 @@ def unet(input_size=(216, 320, 1), n_filters=64, batchnorm=True, dropout_rate=0.
         for layer, layer_tmp in zip(model.layers[:fine_tune_at], model_tmp.layers[:fine_tune_at]):
             layer.set_weights(layer_tmp.get_weights())
             layer.trainable = False
+    
+    model.summary()
+    # tf.keras.utils.plot_model(model, show_shapes=True)
 
     return model
 

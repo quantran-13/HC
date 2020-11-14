@@ -6,7 +6,7 @@ import math
 
 import seglosses
 from config import *
-from unet import unet
+from architect.Unet import unet
 from architect.DilateAttentionUnet import dilate_attention_unet
 from data import DataLoader
 from utils import time_to_timestr

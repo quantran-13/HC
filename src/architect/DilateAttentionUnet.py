@@ -166,9 +166,6 @@ def dilate_attention_unet(input_size=(216, 320, 1), n_filters=64, batchnorm=True
     model = Model(inputs=[inputs], outputs=[outputs],
                   name="DilateAttentionUNet")
 
-    # model.summary()
-    # tf.keras.utils.plot_model(model, show_shapes=True)
-
     if freeze:
         if freeze_at is 0:
             raise ValueError('No layer was freeze in the model! \
@@ -179,6 +176,9 @@ def dilate_attention_unet(input_size=(216, 320, 1), n_filters=64, batchnorm=True
         for layer, layer_tmp in zip(model.layers[:fine_tune_at], model_tmp.layers[:fine_tune_at]):
             layer.set_weights(layer_tmp.get_weights())
             layer.trainable = False
+    
+    model.summary()
+    # tf.keras.utils.plot_model(model, show_shapes=True)
 
     return model
 
