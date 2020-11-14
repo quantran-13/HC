@@ -132,7 +132,7 @@ class DataLoader(object):
         A TensorFlow Dataset API based loader for semantic segmentation problems.
     """
 
-    def __init__(self, root, mode="train", augmentation=False, one_hot_encoding=False, palette=None, image_size=(216, 320, 1), save=False):
+    def __init__(self, root, mode="train", augmentation=False, compose=False, one_hot_encoding=False, palette=None, image_size=(216, 320, 1), save=False):
         """
         root: "../data/training_set"
         """
@@ -140,6 +140,7 @@ class DataLoader(object):
         self.root = root
         self.mode = mode
         self.augmentation = augmentation
+        self.compose = compose
         self.one_hot_encoding = one_hot_encoding
         self.palette = palette
         self.image_size = (image_size[0], image_size[1])
@@ -286,7 +287,8 @@ class DataLoader(object):
             tensor = tf.keras.preprocessing.image.random_shift(
                 tensor, 0.1, 0.1)
         else:
-            tensor = tf.keras.preprocessing.image.random_zoom(tensor, 0.3)
+            tensor = tf.keras.preprocessing.image.random_zoom(
+                tensor, (1.2, 1.2))
 
         tensor = self.reorder_channel(
             tf.convert_to_tensor(tensor), order="channel_last")
@@ -423,11 +425,21 @@ class DataLoader(object):
             image_f, mask_f = self.normalize_data(image_f, mask_f)
 
             if self.augmentation:
-                # images_f, mask_f = self.cut_roi(image_f, mask_f)
-                image_f, mask_f = self.change_brightness(image_f, mask_f)
-                image_f, mask_f = self.flip_horizontally(image_f, mask_f)
-                image_f, mask_f = self.rotate(image_f, mask_f)
-                image_f, mask_f = self.shift(image_f, mask_f)
+                if self.compose:
+                    # images_f, mask_f = self.cut_roi(image_f, mask_f)
+                    image_f, mask_f = self.change_brightness(image_f, mask_f)
+                    image_f, mask_f = self.flip_horizontally(image_f, mask_f)
+                    image_f, mask_f = self.rotate(image_f, mask_f)
+                    image_f, mask_f = self.shift(image_f, mask_f)
+                    image_f, mask_f = self.zoom(image_f, mask_f)
+                else:
+                    options = [self.change_brightness,
+                               self.flip_horizontally,
+                               self.rotate,
+                               self.shift,
+                               self.zoom]
+                    augment_func = random.choice(options)
+                    image_f, mask_f = augment_func(image_f, mask_f)
 
             if self.one_hot_encoding:
                 if self.palette is None:
