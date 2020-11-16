@@ -25,7 +25,8 @@ def load_model_from_path(file_path):
                       "dice_loss": seglosses.dice_loss,
                       "dice_coeff": seglosses.dice_coeff,
                       "bce_loss": seglosses.bce_loss,
-                      "bce_dice_loss": seglosses.bce_dice_loss, }
+                      "bce_dice_loss": seglosses.bce_dice_loss,
+                      "loss": seglosses.focal_loss()}
 
     model = load_model(file_path, custom_objects=custom_objects)
 

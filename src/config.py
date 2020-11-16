@@ -7,7 +7,7 @@ GAMMA = 2.0  # focal loss gamma
 
 OPTIMIZER = "sgd"
 
-FREEZE = True
+FREEZE = False
 FREEZE_AT = 16
 
 # hyperparameter
