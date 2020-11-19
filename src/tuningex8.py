@@ -6,10 +6,13 @@ import math
 
 import seglosses
 from config import *
-from architect.Unet import unet
-from architect.DilateAttentionUnet import dilate_attention_unet
 from data import DataLoader
 from utils import time_to_timestr
+
+from architect.Unet import unet
+from architect.DilateAttentionUnet import dilate_attention_unet
+from architect.AttentionUnet import attention_unet
+from architect.DilateUnet import dilate_unet
 
 import tensorflow as tf
 from tensorflow.keras.optimizers import SGD, Adam, RMSprop
@@ -19,16 +22,14 @@ from tensorboard.plugins.hparams import api as hp
 tf.get_logger().setLevel("INFO")
 
 
-HP_FREEZE_AT = hp.HParam("freeze_at", hp.Discrete([16, 24]))
-HP_DROPOUT = hp.HParam("dropout", hp.RealInterval(0.1, 0.2))
-HP_OPTIMIZER = hp.HParam("optimizer", hp.Discrete(["sgd", "adam", "rmsprop"]))
-HP_LOSS = hp.HParam("loss", hp.Discrete(["bce_dice", "jaccard", "dice", "bce"]))
+# HP_FREEZE_AT = hp.HParam("freeze_at", hp.Discrete([16, 24]))
+# HP_DROPOUT = hp.HParam("dropout", hp.RealInterval(0.1, 0.2))
+# HP_OPTIMIZER = hp.HParam("optimizer", hp.Discrete(["sgd", "adam", "rmsprop"]))
+HP_LOSS = hp.HParam("loss", hp.Discrete(
+    ["bce_dice", "jaccard", "dice", "focal"]))
 
 
 HPARAMS = [
-    HP_FREEZE_AT,
-    HP_DROPOUT,
-    HP_OPTIMIZER,
     HP_LOSS,
 ]
 
@@ -55,9 +56,9 @@ def lr_step_decay(epoch, lr):
 
 def train(run_dir, hparams, train_gen, valid_gen):
     # define model
-    model = dilate_attention_unet(dropout_rate=hparams[HP_DROPOUT],
-                                  freeze=FREEZE,
-                                  freeze_at=hparams[HP_FREEZE_AT])
+    model = attention_unet(dropout_rate=DROPOUT_RATE,
+                           freeze=FREEZE,
+                           freeze_at=FREEZE_AT)
     print("Model: ", model._name)
 
     # optim
@@ -66,7 +67,7 @@ def train(run_dir, hparams, train_gen, valid_gen):
         "adam": Adam(learning_rate=LEARNING_RATE, amsgrad=True),
         "rmsprop": RMSprop(learning_rate=LEARNING_RATE, momentum=MOMENTUM)
     }
-    optimizer = optimizers[hparams[HP_OPTIMIZER]]
+    optimizer = optimizers[OPTIMIZER]
     print("Optimizer: ", optimizer._name)
 
     # loss
@@ -75,9 +76,10 @@ def train(run_dir, hparams, train_gen, valid_gen):
         "dice": seglosses.dice_loss,
         "bce": seglosses.bce_loss,
         "bce_dice": seglosses.bce_dice_loss,
-        "focal": seglosses.focal_loss()  # (gamma=hparams[HP_GAMMA])
+        "focal": seglosses.focal_loss(gamma=GAMMA)
     }
     loss = losses[hparams[HP_LOSS]]
+    print("Loss: ", loss)
 
     model.compile(optimizer=optimizer,
                   loss=[loss],
@@ -179,25 +181,19 @@ def main():
         hp.hparams_config(hparams=HPARAMS, metrics=METRICS)
 
     session_num = 0
-    for freeze_at in HP_FREEZE_AT.domain.values:
-        for dropout_rate in (HP_DROPOUT.domain.min_value, HP_DROPOUT.domain.max_value):
-            for optimizer in HP_OPTIMIZER.domain.values:
-                for loss in HP_LOSS.domain.values:
-                    hparams = {
-                        HP_DROPOUT: dropout_rate,
-                        HP_OPTIMIZER: optimizer,
-                        HP_LOSS: loss,
-                        HP_FREEZE_AT: freeze_at,
-                    }
+    for loss in HP_LOSS.domain.values:
+        hparams = {
+            HP_LOSS: loss
+        }
 
-                    run_name = "run-{}".format(session_num)
-                    print("---- Starting trial: {} ----".format(run_name))
-                    print({h.name: hparams[h] for h in hparams})
-                    train("{}/{}".format(log_dir, run_name),
-                          hparams,
-                          train_gen,
-                          valid_gen)
-                    session_num += 1
+        run_name = "run-{}".format(session_num)
+        print("---- Starting trial: {} ----".format(run_name))
+        print({h.name: hparams[h] for h in hparams})
+        train("{}/{}".format(log_dir, run_name),
+              hparams,
+              train_gen,
+              valid_gen)
+        session_num += 1
 
 
 if __name__ == "__main__":

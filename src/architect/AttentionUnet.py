@@ -47,6 +47,22 @@ def conv2d_block(x, n_filters, kernel_size=3, batchnorm=True):
     return c2
 
 
+def padding(x, y):
+    x_shape = x.shape.as_list()
+    y_shape = y.shape.as_list()
+
+    if x.shape[1] > y_shape[1]:
+        y = ZeroPadding2D(((1, 0), (0, 0)), data_format="channels_last")(y)
+    if x.shape[1] < y_shape[1]:
+        x = ZeroPadding2D(((1, 0), (0, 0)), data_format="channels_last")(x)
+    if x.shape[2] > y_shape[2]:
+        y = ZeroPadding2D(((0, 0), (1, 0)), data_format="channels_last")(y)
+    if x.shape[2] < y_shape[2]:
+        x = ZeroPadding2D(((0, 0), (1, 0)), data_format="channels_last")(x)
+
+    return x, y
+
+
 def expend_as(tensor, rep):
     my_repeat = Lambda(lambda x, repnum: K.repeat_elements(
         x, repnum, axis=3), arguments={"repnum": rep})(tensor)
@@ -69,6 +85,8 @@ def attention_gate(x, g, n_filters):
                            n_filters,
                            kernel_size=1,
                            batchnorm=False)
+
+    wg, wx = padding(wg, wx)
 
     a = Add()([wg, wx])
     relu = Activation("relu")(a)
@@ -109,21 +127,19 @@ def attention_unet(input_size=(216, 320, 1), n_filters=64, batchnorm=True, dropo
     # expansion path
     a6 = attention_gate(c4, c5, n_filters * 8)
     u6 = Conv2DTranspose(n_filters * 8, 3, strides=(2, 2), padding="same")(c5)
-    u6 = ZeroPadding2D(((1, 0), (0, 0)), data_format="channels_last")(u6)
+    u6, a6 = padding(u6, a6)
     u6 = concatenate([u6, a6])
     u6 = Dropout(dropout_rate)(u6)
     c6 = conv2d_block(u6, n_filters * 8, kernel_size=3, batchnorm=batchnorm)
 
     a7 = attention_gate(c3, c6, n_filters * 4)
     u7 = Conv2DTranspose(n_filters * 4, 3, strides=(2, 2), padding="same")(c6)
-    # u7 = ZeroPadding2D(((1, 0), (0, 0)), data_format="channels_last")(u7)
     u7 = concatenate([u7, a7])
     u7 = Dropout(dropout_rate)(u7)
     c7 = conv2d_block(u7, n_filters * 4, kernel_size=3, batchnorm=batchnorm)
 
     a8 = attention_gate(c2, c7, n_filters * 2)
     u8 = Conv2DTranspose(n_filters * 2, 3, strides=(2, 2), padding="same")(c7)
-    # u8 = ZeroPadding2D(((1, 0), (0, 0)), data_format="channels_last")(u8)
     u8 = concatenate([u8, a8])
     u8 = Dropout(dropout_rate)(u8)
     c8 = conv2d_block(u8, n_filters * 2, kernel_size=3, batchnorm=batchnorm)
@@ -138,6 +154,10 @@ def attention_unet(input_size=(216, 320, 1), n_filters=64, batchnorm=True, dropo
     model = Model(inputs=[inputs], outputs=[outputs], name="AttentionUNet")
 
     if freeze:
+        if freeze_at is 0:
+            raise ValueError('No layer was freeze in the model! \
+                              Please check again and specify number of layers freezed.')
+
         fine_tune_at = freeze_at
         model_tmp = load_model_from_path("../models/model_attention_unet.hdf5")
 

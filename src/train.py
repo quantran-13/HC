@@ -6,10 +6,13 @@ import math
 
 import seglosses
 from config import *
-from architect.Unet import unet
-from architect.DilateAttentionUnet import dilate_attention_unet
 from data import DataLoader
 from utils import time_to_timestr
+
+from architect.Unet import unet
+from architect.DilateAttentionUnet import dilate_attention_unet
+from architect.AttentionUnet import attention_unet
+from architect.DilateUnet import dilate_unet
 
 import tensorflow as tf
 from tensorflow.keras.optimizers import SGD, Adam, RMSprop
@@ -62,9 +65,10 @@ def train():
     valid_gen = valid_set.data_gen(BATCH_SIZE, shuffle=True)
 
     # define model
-    model = dilate_attention_unet(dropout_rate=DROPOUT_RATE,
-                                  freeze=FREEZE,
-                                  freeze_at=FREEZE_AT)
+    model = unet(input_size=IMAGE_SIZE,
+                 dropout_rate=DROPOUT_RATE,
+                 freeze=FREEZE,
+                 freeze_at=FREEZE_AT)
     print("Model: ", model._name)
 
     # optim
@@ -78,16 +82,17 @@ def train():
     print("Optimizer: ", optimizer._name)
 
     # loss
-    loss = {
+    losses = {
         "jaccard": seglosses.jaccard_loss,
         "dice": seglosses.dice_loss,
         "bce": seglosses.bce_loss,
         "bce_dice": seglosses.bce_dice_loss,
         "focal": seglosses.focal_loss(gamma=GAMMA)
     }
+    print("Loss: ", losses[LOSS])
 
     model.compile(optimizer=optimizer,
-                  loss=[loss[LOSS]],
+                  loss=[losses[LOSS]],
                   metrics=[seglosses.jaccard_index, seglosses.dice_coeff, seglosses.bce_loss])
 
     # callbacks
@@ -101,7 +106,7 @@ def train():
                              min_lr=1e-7)
 
     early = EarlyStopping(monitor="val_loss",
-                          patience=35,
+                          patience=50,
                           verbose=1)
 
     timestr = time_to_timestr()

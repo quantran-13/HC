@@ -132,7 +132,7 @@ class DataLoader(object):
         A TensorFlow Dataset API based loader for semantic segmentation problems.
     """
 
-    def __init__(self, root, mode="train", augmentation=False, compose=False, one_hot_encoding=False, palette=None, image_size=(216, 320, 1), save=False):
+    def __init__(self, root, mode="train", augmentation=False, compose=False, one_hot_encoding=False, palette=None, image_size=(216, 320, 1)):
         """
         root: "../data/training_set"
         """
@@ -144,7 +144,6 @@ class DataLoader(object):
         self.one_hot_encoding = one_hot_encoding
         self.palette = palette
         self.image_size = (image_size[0], image_size[1])
-        self.save = save
 
         if (self.mode == "train"):
             self.df = pd.read_csv("../data/train.csv")
@@ -234,13 +233,6 @@ class DataLoader(object):
                         lambda: tf.image.random_brightness(image, 0.1),
                         lambda: tf.identity(image))
 
-        if self.save:
-            idx = random.randint(0, 30000)
-            cv2.imwrite("../data/aug/brightness_{}.png".format(idx),
-                        image.numpy().squeeze() * 255)
-            cv2.imwrite("../data/aug/brightness_{}_mask.png".format(idx),
-                        mask.numpy().squeeze() * 255)
-
         return image, mask
 
     def change_contrast(self, image, mask):
@@ -252,12 +244,6 @@ class DataLoader(object):
         image = tf.cond(cond_contrast,
                         lambda: tf.image.random_contrast(image, 0.1, 0.5),
                         lambda: tf.identity(image))
-        if self.save:
-            idx = random.randint(0, 30000)
-            cv2.imwrite("../data/aug/contrast_{}.png".format(idx),
-                        image.numpy().squeeze() * 255)
-            cv2.imwrite("../data/aug/contrast_{}_mask.png".format(idx),
-                        mask.numpy().squeeze() * 255)
 
         return image, mask
 
@@ -268,13 +254,6 @@ class DataLoader(object):
         comb_tensor = tf.concat([image, mask], axis=2)
         comb_tensor = tf.image.random_flip_left_right(comb_tensor)
         image, mask = tf.split(comb_tensor, [1, 1], axis=2)
-
-        if self.save:
-            idx = random.randint(0, 30000)
-            cv2.imwrite("../data/aug/flip_horizontally_{}.png".format(idx),
-                        image.numpy().squeeze() * 255)
-            cv2.imwrite("../data/aug/flip_horizontally_{}_mask.png".format(idx),
-                        mask.numpy().squeeze() * 255)
 
         return image, mask
 
@@ -313,13 +292,6 @@ class DataLoader(object):
                               lambda: tf.identity(comb_tensor))
         image, mask = tf.split(comb_tensor, [1, 1], axis=2)
 
-        if self.save:
-            idx = random.randint(0, 30000)
-            cv2.imwrite("../data/aug/rotate_{}.png".format(idx),
-                        image.numpy().squeeze() * 255)
-            cv2.imwrite("../data/aug/rotate_{}_mask.png".format(idx),
-                        mask.numpy().squeeze() * 255)
-
         return image, mask
 
     def shift(self, image, mask):
@@ -334,13 +306,6 @@ class DataLoader(object):
                               lambda: tf.identity(comb_tensor))
         image, mask = tf.split(comb_tensor, [1, 1], axis=2)
 
-        if self.save:
-            idx = random.randint(0, 30000)
-            cv2.imwrite("../data/aug/shift_{}.png".format(idx),
-                        image.numpy().squeeze() * 255)
-            cv2.imwrite("../data/aug/shift_{}_mask.png".format(idx),
-                        mask.numpy().squeeze() * 255)
-
         return image, mask
 
     def zoom(self, image, mask):
@@ -354,13 +319,6 @@ class DataLoader(object):
                               lambda: self._tranform(comb_tensor, "zoom"),
                               lambda: tf.identity(comb_tensor))
         image, mask = tf.split(comb_tensor, [1, 1], axis=2)
-
-        if self.save:
-            idx = random.randint(0, 30000)
-            cv2.imwrite("../data/aug/zoom_{}.png".format(idx),
-                        image.numpy().squeeze() * 255)
-            cv2.imwrite("../data/aug/zoom_{}_mask.png".format(idx),
-                        mask.numpy().squeeze() * 255)
 
         return image, mask
 
@@ -380,13 +338,6 @@ class DataLoader(object):
         image = tf.cond(cond_he,
                         lambda: tf.image.random_contrast(image, 0.1, 0.5),
                         lambda: tf.identity(image))
-
-        if self.save:
-            idx = random.randint(0, 30000)
-            cv2.imwrite("../data/aug/clahe_{}.png".format(idx),
-                        image.numpy().squeeze())
-            cv2.imwrite("../data/aug/clahe_{}_mask.png".format(idx),
-                        mask.numpy().squeeze())
 
         return image, mask
 
@@ -410,15 +361,8 @@ class DataLoader(object):
                        lambda: tf.identity(anno))
 
         image = tf.cond(cond_cut,
-                        lambda: (image*mask)/255.,
+                        lambda: (image * mask)/255.,
                         lambda: tf.identity(image))
-
-        if self.save:
-            idx = random.randint(0, 30000)
-            cv2.imwrite("../data/aug/cut_roi_{}.png".format(idx),
-                        image.numpy().squeeze() * 255)
-            cv2.imwrite("../data/aug/cut_roi_{}_mask.png".format(idx),
-                        mask.numpy().squeeze() * 255)
 
         return image, mask
 
@@ -428,22 +372,19 @@ class DataLoader(object):
 
         def augmentation_func(image_f, mask_f):
             image_f, mask_f = self.equalize_histogram(image_f, mask_f)
-            # image_f, mask_f = self.normalize_data(image_f, mask_f)
+            image_f, mask_f = self.normalize_data(image_f, mask_f)
 
             if self.augmentation:
                 if self.compose:
-                    # images_f, mask_f = self.cut_roi(image_f, mask_f)
                     image_f, mask_f = self.change_brightness(image_f, mask_f)
                     image_f, mask_f = self.flip_horizontally(image_f, mask_f)
                     image_f, mask_f = self.rotate(image_f, mask_f)
                     image_f, mask_f = self.shift(image_f, mask_f)
-                    image_f, mask_f = self.zoom(image_f, mask_f)
                 else:
                     options = [self.change_brightness,
                                self.flip_horizontally,
                                self.rotate,
-                               self.shift,
-                               self.zoom]
+                               self.shift]
                     augment_func = random.choice(options)
                     image_f, mask_f = augment_func(image_f, mask_f)
 
@@ -503,8 +444,7 @@ if __name__ == "__main__":
 
     data = DataLoader("../data/training_set",
                       one_hot_encoding=True,
-                      palette=[255],
-                      save=True).data_gen(32)
+                      palette=[255]).data_gen(32)
 
     for image, mask in data:
         pass

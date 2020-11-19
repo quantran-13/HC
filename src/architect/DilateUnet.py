@@ -102,45 +102,7 @@ def padding(x, y):
     return x, y
 
 
-def expend_as(tensor, rep):
-    my_repeat = Lambda(lambda x, repnum: K.repeat_elements(
-        x, repnum, axis=3), arguments={'repnum': rep})(tensor)
-
-    return my_repeat
-
-
-def attention_gate(x, g, n_filters):
-    """
-        x: feature from lower layer (spatially smaller signal), has bigger width and height but fewer channel 
-        g: feature from deeper layer (bigger spatially), has smaller width and height but more channel
-    """
-    wg = convolution_block(g,
-                           n_filters,
-                           kernel_size=1,
-                           batchnorm=False)
-    wg = Conv2DTranspose(n_filters, 3, strides=(2, 2), padding="same")(wg)
-
-    wx = convolution_block(x,
-                           n_filters,
-                           kernel_size=1,
-                           batchnorm=False)
-
-    wg, wx = padding(wg, wx)
-
-    a = Add()([wg, wx])
-    relu = Activation("relu")(a)
-    psi = convolution_block(relu,
-                            1,
-                            kernel_size=1,
-                            batchnorm=False)
-    sigmoid = Activation("sigmoid")(psi)
-    alpha = expend_as(sigmoid, n_filters)
-    mul = Multiply()([x, alpha])
-
-    return mul
-
-
-def dilate_attention_unet(input_size=(216, 320, 1), n_filters=64, batchnorm=True, dropout_rate=0.1, freeze=False, freeze_at=0):
+def dilate_unet(input_size=(216, 320, 1), n_filters=64, batchnorm=True, dropout_rate=0.1, freeze=False, freeze_at=0):
     inputs = Input(input_size, name="img")
 
     # contraction path
@@ -160,27 +122,24 @@ def dilate_attention_unet(input_size=(216, 320, 1), n_filters=64, batchnorm=True
     c4 = dilated_block(p3, n_filters * 8, kernel_size=3, batchnorm=batchnorm)
 
     # expansion path
-    a5 = attention_gate(c3, c4, n_filters * 4)
     u5 = Conv2DTranspose(n_filters * 4, 3, strides=(2, 2), padding="same")(c4)
-    u5 = concatenate([u5, a5])
+    u5 = concatenate([u5, c3])
     u5 = Dropout(dropout_rate)(u5)
     c5 = conv2d_block(u5, n_filters * 8, kernel_size=3, batchnorm=batchnorm)
 
-    a6 = attention_gate(c2, c5, n_filters * 2)
     u6 = Conv2DTranspose(n_filters * 2, 3, strides=(2, 2), padding="same")(c5)
-    u6 = concatenate([u6, a6])
+    u6 = concatenate([u6, c2])
     u6 = Dropout(dropout_rate)(u6)
     c6 = conv2d_block(u6, n_filters * 2, kernel_size=3, batchnorm=batchnorm)
 
-    a7 = attention_gate(c1, c6, n_filters * 1)
     u7 = Conv2DTranspose(n_filters * 1, 3, strides=(2, 2), padding="same")(c6)
-    u7 = concatenate([u7, a7])
+    u7 = concatenate([u7, c1])
     u7 = Dropout(dropout_rate)(u7)
     c7 = conv2d_block(u7, n_filters * 1, kernel_size=3, batchnorm=batchnorm)
 
     outputs = Conv2D(1, (1, 1), activation="sigmoid")(c7)
     model = Model(inputs=[inputs], outputs=[outputs],
-                  name="DilateAttentionUNet")
+                  name="DilateUNet")
 
     if freeze:
         if freeze_at is 0:
@@ -189,7 +148,7 @@ def dilate_attention_unet(input_size=(216, 320, 1), n_filters=64, batchnorm=True
 
         fine_tune_at = freeze_at
         model_tmp = load_model_from_path(
-            "../models/model_dilate_attention_unet.hdf5")
+            "../models/model_dilate_unet.hdf5")
 
         for layer, layer_tmp in zip(model.layers[:fine_tune_at], model_tmp.layers[:fine_tune_at]):
             layer.set_weights(layer_tmp.get_weights())
@@ -202,6 +161,6 @@ def dilate_attention_unet(input_size=(216, 320, 1), n_filters=64, batchnorm=True
 
 
 if __name__ == "__main__":
-    model = dilate_attention_unet()
-    dot_img_file = "../images/dilate_attention_unet.png"
+    model = dilate_unet()
+    dot_img_file = "../images/dilate_unet.png"
     tf.keras.utils.plot_model(model, to_file=dot_img_file, show_shapes=True)
