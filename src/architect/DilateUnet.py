@@ -142,10 +142,6 @@ def dilate_unet(input_size=(216, 320, 1), n_filters=64, batchnorm=True, dropout_
                   name="DilateUNet")
 
     if freeze:
-        if freeze_at is 0:
-            raise ValueError('No layer was freeze in the model! \
-                              Please check again and specify number of layers freezed.')
-
         fine_tune_at = freeze_at
         model_tmp = load_model_from_path(
             "../models/model_dilate_unet.hdf5")

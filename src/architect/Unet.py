@@ -32,6 +32,22 @@ def conv2d_block(input, n_filters, kernel_size=3, batchnorm=True):
     return x
 
 
+def padding(x, y):
+    x_shape = x.shape.as_list()
+    y_shape = y.shape.as_list()
+
+    if x.shape[1] > y_shape[1]:
+        y = ZeroPadding2D(((1, 0), (0, 0)), data_format="channels_last")(y)
+    if x.shape[1] < y_shape[1]:
+        x = ZeroPadding2D(((1, 0), (0, 0)), data_format="channels_last")(x)
+    if x.shape[2] > y_shape[2]:
+        y = ZeroPadding2D(((0, 0), (1, 0)), data_format="channels_last")(y)
+    if x.shape[2] < y_shape[2]:
+        x = ZeroPadding2D(((0, 0), (1, 0)), data_format="channels_last")(x)
+
+    return x, y
+
+
 def unet(input_size=(216, 320, 1), n_filters=64, batchnorm=True, dropout_rate=0.1, freeze=False, freeze_at=0):
     inputs = Input(input_size, name="img")
 
@@ -56,24 +72,25 @@ def unet(input_size=(216, 320, 1), n_filters=64, batchnorm=True, dropout_rate=0.
 
     # expansion path
     u6 = Conv2DTranspose(n_filters * 8, 3, strides=(2, 2), padding='same')(c5)
-    u6 = ZeroPadding2D(((1, 0), (0, 0)), data_format="channels_last")(u6)
+    u6, c4 = padding(u6, c4)
     u6 = concatenate([u6, c4])
     u6 = Dropout(dropout_rate)(u6)
     c6 = conv2d_block(u6, n_filters * 8, kernel_size=3, batchnorm=batchnorm)
 
     u7 = Conv2DTranspose(n_filters * 4, 3, strides=(2, 2), padding='same')(c6)
-    # u7 = ZeroPadding2D(((1, 0), (0, 0)), data_format="channels_last")(u7)
+    u7, c3 = padding(u7, c3)
     u7 = concatenate([u7, c3])
     u7 = Dropout(dropout_rate)(u7)
     c7 = conv2d_block(u7, n_filters * 4, kernel_size=3, batchnorm=batchnorm)
 
     u8 = Conv2DTranspose(n_filters * 2, 3, strides=(2, 2), padding='same')(c7)
-    # u8 = ZeroPadding2D(((1, 0), (0, 0)), data_format="channels_last")(u8)
+    u8, c2 = padding(u8, c2)
     u8 = concatenate([u8, c2])
     u8 = Dropout(dropout_rate)(u8)
     c8 = conv2d_block(u8, n_filters * 2, kernel_size=3, batchnorm=batchnorm)
 
     u9 = Conv2DTranspose(n_filters * 1, 3, strides=(2, 2), padding='same')(c8)
+    u9, c1 = padding(u9, c1)
     u9 = concatenate([u9, c1])
     u9 = Dropout(dropout_rate)(u9)
     c9 = conv2d_block(u9, n_filters * 1, kernel_size=3, batchnorm=batchnorm)
@@ -82,10 +99,6 @@ def unet(input_size=(216, 320, 1), n_filters=64, batchnorm=True, dropout_rate=0.
     model = Model(inputs=[inputs], outputs=[outputs], name="UNet")
 
     if freeze:
-        if freeze_at is 0:
-            raise ValueError('No layer was freeze in the model! \
-                              Please check again and specify number of layers freezed.')
-
         fine_tune_at = freeze_at
         model_tmp = load_model_from_path("../models/model_unet.hdf5")
 

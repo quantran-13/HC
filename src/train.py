@@ -1,5 +1,6 @@
 import os
 import datetime
+import numpy as np
 import pandas as pd
 from tqdm import tqdm
 import math
@@ -8,6 +9,7 @@ import seglosses
 from config import *
 from data import DataLoader
 from utils import time_to_timestr
+from SGDRScheduler import SGDRScheduler
 
 from architect.Unet import unet
 from architect.DilateAttentionUnet import dilate_attention_unet
@@ -96,8 +98,12 @@ def train():
                   metrics=[seglosses.jaccard_index, seglosses.dice_coeff, seglosses.bce_loss])
 
     # callbacks
-    lr_schedule = LearningRateScheduler(lr_step_decay,
-                                        verbose=1)
+    lr_schedule = SGDRScheduler(min_lr=1e-5,
+                                max_lr=1e-3,
+                                steps_per_epoch=np.ceil(EPOCHS/BATCH_SIZE),
+                                lr_decay=0.9,
+                                cycle_length=10,
+                                mult_factor=1.5)
 
     anne = ReduceLROnPlateau(monitor="loss",
                              factor=0.2,
