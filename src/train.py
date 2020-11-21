@@ -105,6 +105,9 @@ def train():
                                 cycle_length=10,
                                 mult_factor=1.5)
 
+    # lr_schedule = LearningRateScheduler(lr_step_decay,
+    #                                     verbose=1)
+
     anne = ReduceLROnPlateau(monitor="loss",
                              factor=0.2,
                              patience=20,
@@ -151,6 +154,9 @@ def train():
 
     his = pd.DataFrame(history.history)
     his.to_csv("../models/{}/history.csv".format(timestr), index=False)
+
+    his = pd.DataFrame(lr_schedule.history)
+    his.to_csv("../models/{}/history_lr.csv".format(timestr), index=False)
 
 
 if __name__ == "__main__":
