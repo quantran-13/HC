@@ -67,10 +67,10 @@ def train():
     valid_gen = valid_set.data_gen(BATCH_SIZE, shuffle=True)
 
     # define model
-    model = unet(input_size=IMAGE_SIZE,
-                 dropout_rate=DROPOUT_RATE,
-                 freeze=FREEZE,
-                 freeze_at=FREEZE_AT)
+    model = dilate_unet(input_size=IMAGE_SIZE,
+                        dropout_rate=DROPOUT_RATE,
+                        freeze=FREEZE,
+                        freeze_at=FREEZE_AT)
     print("Model: ", model._name)
 
     # optim
@@ -89,7 +89,8 @@ def train():
         "dice": seglosses.dice_loss,
         "bce": seglosses.bce_loss,
         "bce_dice": seglosses.bce_dice_loss,
-        "focal": seglosses.focal_loss(gamma=GAMMA)
+        "focal": seglosses.focal_loss(gamma=GAMMA),
+        "focal_dice": seglosses.focal_dice_loss(gamma=GAMMA),
     }
     print("Loss: ", losses[LOSS])
 
@@ -99,7 +100,7 @@ def train():
 
     # callbacks
     lr_schedule = SGDRScheduler(min_lr=1e-5,
-                                max_lr=1e-3,
+                                max_lr=LEARNING_RATE,
                                 steps_per_epoch=np.ceil(EPOCHS/BATCH_SIZE),
                                 lr_decay=0.9,
                                 cycle_length=10,
@@ -157,6 +158,8 @@ def train():
 
     his = pd.DataFrame(lr_schedule.history)
     his.to_csv("../models/{}/history_lr.csv".format(timestr), index=False)
+
+    print("="*100)
 
 
 if __name__ == "__main__":

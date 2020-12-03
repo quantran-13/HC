@@ -72,8 +72,8 @@ def expend_as(tensor, rep):
 
 def attention_gate(x, g, n_filters):
     """
-        x: feature from deeper layer (bigger spatially), has smaller width and height but more channel
-        g: feature from lower layer (spatially smaller signal), has bigger width and height but fewer channel
+        x: feature from lower layer (spatially smaller signal), has bigger width and height but fewer channel
+        g: feature from deeper layer (bigger spatially), has smaller width and height but more channel
     """
     wg = convolution_block(g,
                            n_filters,

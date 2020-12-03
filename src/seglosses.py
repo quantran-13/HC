@@ -19,7 +19,7 @@ def apply_reduction(value, reduction="mean"):
 
 def jaccard_index(y_true, y_pred, smooth=1, reduction="mean"):
     """
-        JI = TP / (TP + FP + TN)
+        JI = TP / (TP + FP + FN)
     """
     y_true_f = K.abs(K.batch_flatten(y_true))
     y_pred_f = K.abs(K.batch_flatten(y_pred))
@@ -87,11 +87,11 @@ def focal_loss(gamma=2.):
 
 def focal_dice_loss(gamma=2., loss_weight=(1., 1.)):
     def f_d_loss(y_true, y_pred, loss_weight=loss_weight, reduction="mean"):
-        fl = focal_loss(gamma=gamma, loss_weight=loss_weight)
+        fl = focal_loss(gamma=gamma)
         loss = loss_weight[0] * fl(y_true, y_pred, reduction=reduction) + \
             loss_weight[1] * dice_loss(y_true, y_pred, reduction=reduction)
 
-        return apply_reduction(fl, reduction=reduction)
+        return loss
 
     return f_d_loss
 

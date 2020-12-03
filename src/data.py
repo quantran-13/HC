@@ -336,7 +336,7 @@ class DataLoader(object):
         cond_he = tf.cast(tf.random.uniform(
             [], maxval=2, dtype=tf.int32), tf.bool)
         image = tf.cond(cond_he,
-                        lambda: tf.image.random_contrast(image, 0.1, 0.5),
+                        lambda: self._equalize_histogram(image),
                         lambda: tf.identity(image))
 
         return image, mask
@@ -443,8 +443,10 @@ if __name__ == "__main__":
         generate_data_csv()
 
     data = DataLoader("../data/training_set",
+    augmentation=True,
                       one_hot_encoding=True,
                       palette=[255]).data_gen(32)
 
     for image, mask in data:
-        pass
+        print(image.shape)
+        break
