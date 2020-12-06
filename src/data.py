@@ -39,92 +39,104 @@ def add_ellipses_and_bboxs_csv():
 
     df = pd.read_csv("../data/training_set_pixel_size_and_HC.csv")
 
-    centers_x = list()
-    centers_y = list()
-    axes_a = list()
-    axes_b = list()
-    angles = list()
+    df_pixel = df.copy()
+    centers_x_pixel = list()
+    centers_y_pixel = list()
+    axes_a_pixel = list()
+    axes_b_pixel = list()
+    angles_pixel = list()
 
-    x_mins = list()
-    y_mins = list()
-    x_maxs = list()
-    y_maxs = list()
+    df_mm = df.copy()
+    centers_x_mm = list()
+    centers_y_mm = list()
+    axes_a_mm = list()
+    axes_b_mm = list()
+    angles_mm = list()
 
     for i, row in df.iterrows():
         filename = row["filename"]
-        print("Image: {}\n".format(filename))
+        print("Image: {}".format(filename))
         anno = read_image(os.path.join("../data/training_set",
                                        filename.replace(".png", "_Annotation.png")))
 
         # plt.imshow(anno)
         (xx, yy), (MA, ma), angle = ellipse_fit_anno(anno)
-        factor = row["pixel size(mm)"]
 
+        center_x_pixel = yy
+        center_y_pixel = xx
+        semi_axes_a_pixel = ma / 2
+        semi_axes_b_pixel = MA / 2
+        angle_rad = (-angle * np.pi / 180) % np.pi
+
+        centers_x_pixel.append(center_x_pixel)
+        centers_y_pixel.append(center_y_pixel)
+        axes_a_pixel.append(semi_axes_a_pixel)
+        axes_b_pixel.append(semi_axes_b_pixel)
+        angles_pixel.append(angle_rad)
+        # print("In pixel:", center_x_pixel, center_y_pixel,
+        #       semi_axes_a_pixel, semi_axes_b_pixel, angle_rad)
+
+        factor = row["pixel size(mm)"]
         center_x_mm = factor * yy
         center_y_mm = factor * xx
         semi_axes_a_mm = factor * ma / 2
         semi_axes_b_mm = factor * MA / 2
         angle_rad = (-angle * np.pi / 180) % np.pi
-        # print(center_x_mm, center_y_mm, semi_axes_a_mm, semi_axes_b_mm, angle_rad)
 
-        centers_x.append(center_x_mm)
-        centers_y.append(center_y_mm)
-        axes_a.append(semi_axes_a_mm)
-        axes_b.append(semi_axes_b_mm)
-        angles.append(angle_rad)
+        centers_x_mm.append(center_x_mm)
+        centers_y_mm.append(center_y_mm)
+        axes_a_mm.append(semi_axes_a_mm)
+        axes_b_mm.append(semi_axes_b_mm)
+        angles_mm.append(angle_rad)
+        # print("In mm:", center_x_mm, center_y_mm,
+        #       semi_axes_a_mm, semi_axes_b_mm, angle_rad)
 
         circ = ellipse_circumference_approx(semi_axes_a_mm, semi_axes_b_mm)
-
         assert np.abs(circ - row["head circumference (mm)"]
                       ) < 0.1, "Wrong ellipse circumference approximation"
-
         # print("circ: ", circ)
         # print("true circ: ", row["head circumference (mm)"])
 
-        points = np.argwhere(anno > 127)
-        x_max, y_max = np.amax(points, axis=0)
-        x_min, y_min = np.amin(points, axis=0)
-        # print(y_min, x_min, y_max, x_max)
+    df_pixel["center_x_pixel"] = centers_x_pixel
+    df_pixel["center_y_pixel"] = centers_y_pixel
+    df_pixel["semi_axes_a_pixel"] = axes_a_pixel
+    df_pixel["semi_axes_b_pixel"] = axes_b_pixel
+    df_pixel["angle_rad"] = angles_mm
 
-        # img = cv2.rectangle(img, (y_min, x_min), (y_max, x_max), (255, 0, 0), 1)
-        # plt.imshow(img)
+    df_mm["center_x_mm"] = centers_x_mm
+    df_mm["center_y_mm"] = centers_y_mm
+    df_mm["semi_axes_a_mm"] = axes_a_mm
+    df_mm["semi_axes_b_mm"] = axes_b_mm
+    df_mm["angle_rad"] = angles_mm
 
-        x_mins.append(y_min)
-        y_mins.append(x_min)
-        x_maxs.append(y_max)
-        y_maxs.append(x_max)
+    df_pixel.to_csv(
+        "../data/training_set_pixel_size_and_HC_and_ellipses_in_pixel.csv", index=False)
 
-    df["center x(mm)"] = centers_x
-    df["center y(mm)"] = centers_y
-    df["semi axes a(mm)"] = axes_a
-    df["semi axes b(mm)"] = axes_b
-    df["angle(rad)"] = angles
-
-    df["x min"] = x_mins
-    df["y min"] = y_mins
-    df["x max"] = x_maxs
-    df["y max"] = y_maxs
-
-    print(df)
-    df.to_csv(
-        "../data/training_set_pixel_size_and_HC_and_ellipses_and_bounding_boxs.csv", index=False)
+    df_mm.to_csv(
+        "../data/training_set_pixel_size_and_HC_and_ellipses.csv", index=False)
 
 
-def create_data_csv(df, mode):
-    npy_path = "../data/{}_indices.npy".format(mode)
+def create_data_csv(df, npy_file, out_file):
+    npy_path = "../data/{}".format(npy_file)
 
     subset_indices = np.load(npy_path)
 
     subset_df = df[df.index.isin(subset_indices)]
-    subset_df.to_csv("../data/{}.csv".format(mode), index=False)
+    subset_df.to_csv("../data/{}".format(out_file), index=False)
 
 
-def generate_data_csv():
-    df = pd.read_csv(
-        "../data/training_set_pixel_size_and_HC_and_ellipses_and_bounding_boxs.csv")
+def generate_data_csv(data_csv_path, label_in_pixel=False):
+    df = pd.read_csv("../data/{}".format(data_csv_path))
+    
+    if label_in_pixel:
+        out_file_1 = "train_in_pixel.csv"
+        out_file_2 = "valid_in_pixel.csv"
+    else:
+        out_file_1 = "train.csv"
+        out_file_2 = "valid.csv"
 
-    create_data_csv(df, "train")
-    create_data_csv(df, "valid")
+    create_data_csv(df, "train_indices.npy", out_file_1)
+    create_data_csv(df, "valid_indices.npy", out_file_2)
 
 
 class DataLoader(object):
@@ -435,15 +447,20 @@ class DataLoader(object):
 
 if __name__ == "__main__":
 
-    if "training_set_pixel_size_and_HC_and_ellipses_and_bounding_boxs.csv" not in os.listdir("../data"):
+    if "training_set_pixel_size_and_HC_and_ellipses.csv" not in os.listdir("../data"):
         add_ellipses_and_bboxs_csv()
 
     if "train_indices.npy" not in os.listdir("../data"):
         generate_train_valid_indices()
-        generate_data_csv()
+
+    if "train.csv" not in os.listdir("../data"):
+        generate_data_csv(
+            "training_set_pixel_size_and_HC_and_ellipses.csv")
+        generate_data_csv(
+            "training_set_pixel_size_and_HC_and_ellipses_in_pixel.csv", label_in_pixel=True)
 
     data = DataLoader("../data/training_set",
-    augmentation=True,
+                      augmentation=True,
                       one_hot_encoding=True,
                       palette=[255]).data_gen(32)
 
