@@ -194,3 +194,4 @@ data/*.zip
 .vscode
 logs/
 models/
+submission/

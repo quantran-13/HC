@@ -10,7 +10,7 @@ from sklearn.model_selection import train_test_split
 import tensorflow as tf
 
 from config import *
-from utils import read_image
+from utils import read_image, rotate_point
 from ellipse_fitting import *
 
 # https://github.com/HasnainRaz/SemSegPipeline/blob/master/dataloader.py
@@ -32,7 +32,7 @@ def generate_train_valid_indices():
     np.save("../data/valid_indices.npy", valid_indices)
 
 
-def add_ellipses_and_bboxs_csv():
+def add_ellipses_csv():
     """
         Add ellipses parameters & bounding box parameters to training_set_pixel_size_and_HC.csv
     """
@@ -116,6 +116,69 @@ def add_ellipses_and_bboxs_csv():
         "../data/training_set_pixel_size_and_HC_and_ellipses.csv", index=False)
 
 
+def add_ellipses_keypoints():
+    df = pd.read_csv("../data/training_set_pixel_size_and_HC.csv")
+
+    df_kp = df.copy()
+    x0s = list()
+    y0s = list()
+    x1s = list()
+    y1s = list()
+    x2s = list()
+    y2s = list()
+    x3s = list()
+    y3s = list()
+    x4s = list()
+    y4s = list()
+
+    for i, row in df.iterrows():
+        filename = row["filename"]
+        print("Image: {}".format(filename))
+        anno = read_image(os.path.join("../data/training_set",
+                                       filename.replace(".png", "_Annotation.png")))
+
+        # plt.imshow(anno)
+        (xx, yy), (MA, ma), angle = ellipse_fit_anno(anno)
+
+        center = (yy, xx)
+        x0s.append(yy)
+        y0s.append(xx)
+
+        point = (yy + ma/2, xx)
+        point_rotated = rotate_point(point, center, angle)
+        x1s.append(point_rotated[0])
+        y1s.append(point_rotated[1])
+
+        point = (yy, xx + MA/2)
+        point_rotated = rotate_point(point, center, angle)
+        x2s.append(point_rotated[0])
+        y2s.append(point_rotated[1])
+
+        point = (yy - ma/2, xx)
+        point_rotated = rotate_point(point, center, angle)
+        x3s.append(point_rotated[0])
+        y3s.append(point_rotated[1])
+
+        point = (yy, xx - MA/2)
+        point_rotated = rotate_point(point, center, angle)
+        x4s.append(point_rotated[0])
+        y4s.append(point_rotated[1])
+
+    df_kp["x0"] = x0s
+    df_kp["y0"] = y0s
+    df_kp["x1"] = x1s
+    df_kp["y1"] = y1s
+    df_kp["x2"] = x2s
+    df_kp["y2"] = y2s
+    df_kp["x3"] = x3s
+    df_kp["y3"] = y3s
+    df_kp["x4"] = x4s
+    df_kp["y4"] = y4s
+
+    df_kp.to_csv(
+        "../data/training_set_pixel_size_and_HC_and_ellipses_keypoints.csv", index=False)
+
+
 def create_data_csv(df, npy_file, out_file):
     npy_path = "../data/{}".format(npy_file)
 
@@ -125,18 +188,11 @@ def create_data_csv(df, npy_file, out_file):
     subset_df.to_csv("../data/{}".format(out_file), index=False)
 
 
-def generate_data_csv(data_csv_path, label_in_pixel=False):
+def generate_data_csv(data_csv_path, train_file, valid_file):
     df = pd.read_csv("../data/{}".format(data_csv_path))
-    
-    if label_in_pixel:
-        out_file_1 = "train_in_pixel.csv"
-        out_file_2 = "valid_in_pixel.csv"
-    else:
-        out_file_1 = "train.csv"
-        out_file_2 = "valid.csv"
 
-    create_data_csv(df, "train_indices.npy", out_file_1)
-    create_data_csv(df, "valid_indices.npy", out_file_2)
+    create_data_csv(df, "train_indices.npy", train_file)
+    create_data_csv(df, "valid_indices.npy", valid_file)
 
 
 class DataLoader(object):
@@ -446,18 +502,25 @@ class DataLoader(object):
 
 
 if __name__ == "__main__":
+    L1 = os.listdir("../data")
 
-    if "training_set_pixel_size_and_HC_and_ellipses.csv" not in os.listdir("../data"):
-        add_ellipses_and_bboxs_csv()
+    L2 = ["training_set_pixel_size_and_HC_and_ellipses.csv",
+          "training_set_pixel_size_and_HC_and_ellipses_in_pixel.csv",
+          "training_set_pixel_size_and_HC_and_ellipses_keypoints.csv"]
+    if any(x not in L1 for x in L2):
+        add_ellipses_csv()
+        add_ellipses_keypoints()
 
     if "train_indices.npy" not in os.listdir("../data"):
         generate_train_valid_indices()
 
     if "train.csv" not in os.listdir("../data"):
         generate_data_csv(
-            "training_set_pixel_size_and_HC_and_ellipses.csv")
+            "training_set_pixel_size_and_HC_and_ellipses.csv", "train.csv", "valid.csv")
         generate_data_csv(
-            "training_set_pixel_size_and_HC_and_ellipses_in_pixel.csv", label_in_pixel=True)
+            "training_set_pixel_size_and_HC_and_ellipses_in_pixel.csv", "train_in_pixel.csv", "valid_in_pixel.csv")
+        generate_data_csv(
+            "training_set_pixel_size_and_HC_and_ellipses_keypoints.csv", "train_keypoints.csv", "valid_keypoints.csv")
 
     data = DataLoader("../data/training_set",
                       augmentation=True,

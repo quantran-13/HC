@@ -1,6 +1,7 @@
 import os
 import sys
 import glob
+import math
 import datetime
 import numpy as np
 from PIL import Image
@@ -38,6 +39,19 @@ def load_model_from_path(file_path):
 
 def read_image(path):
     return np.array(Image.open(path))
+
+
+def rotate_point(point, center, deg):
+    point = np.asarray(point)
+    center = np.asarray(center)
+    point = point - center
+
+    rad = math.radians(deg)
+    rotMatrix = np.array([[math.cos(rad), math.sin(rad)],
+                          [-math.sin(rad), math.cos(rad)]])
+    rotated = np.dot(rotMatrix, point).astype(np.int)
+
+    return tuple(rotated + center)
 
 
 def batch_2_numpy(data_batches):
