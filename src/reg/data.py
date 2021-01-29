@@ -6,7 +6,7 @@ import random
 import numpy as np
 import pandas as pd
 
-import tensorflow as tf 
+import tensorflow as tf
 from PIL import ImageFile, Image
 from keras.preprocessing.image import load_img
 from keras.preprocessing.image import save_img
@@ -44,13 +44,13 @@ class DataLoader(object):
         self.normalize_label = normalize_label
         if self.normalize_label:
             self.get_labels_min_max()
-        
-        # self.parse_data_path()
 
+        # self.parse_data_path()
 
     def get_labels_min_max(self):
         df = pd.read_csv("./data/train_in_pixel.csv")
-        list_features = ["center x(mm)", "center y(mm)", "semi axes a(mm)", "semi axes b(mm)", "angle(rad)"]
+        list_features = ["center x(mm)", "center y(mm)",
+                         "semi axes a(mm)", "semi axes b(mm)", "angle(rad)"]
         des = df[list_features].describe().T
 
         self.labels_min_max = des[["min", "max"]]
@@ -232,15 +232,17 @@ class DataLoader(object):
 
     def normalize_labels(self, labels):
         for _, row in enumerate(self.labels_min_max.iterrows()):
-            labels[_] = (labels[_] - row[1]["min"]) / (row[1]["max"] - row[1]["min"])
+            labels[_] = (labels[_] - row[1]["min"]) / \
+                (row[1]["max"] - row[1]["min"])
 
         return (labels[0], labels[1]), (labels[2], labels[3]), labels[4]
 
     def mask_to_ellipse_parameters(self, image_path, mask):
-        row = df.loc[df["filename"] == image_path.numpy().decode("utf-8").split("/")[-1]]
+        row = df.loc[df["filename"] ==
+                     image_path.numpy().decode("utf-8").split("/")[-1]]
         # factor = row["pixel size(mm)"].values[0]
         factor = 1.
-        
+
         (xx, yy), (MA, ma), angle = ellipse_fit_mask(mask.numpy().squeeze())
         center_x_mm = factor * yy
         center_y_mm = factor * xx
@@ -248,10 +250,12 @@ class DataLoader(object):
         semi_axes_b_mm = factor * MA / 2
         angle_rad = (-angle * np.pi / 180) % np.pi
 
-        labels = [center_x_mm, center_y_mm, semi_axes_a_mm, semi_axes_b_mm, angle_rad]
-        
+        labels = [center_x_mm, center_y_mm,
+                  semi_axes_a_mm, semi_axes_b_mm, angle_rad]
+
         if self.normalize_label:
-                (center_x_mm, center_y_mm), (semi_axes_a_mm, semi_axes_b_mm), angle_rad = self.normalize_labels(labels)
+            (center_x_mm, center_y_mm), (semi_axes_a_mm,
+                                         semi_axes_b_mm), angle_rad = self.normalize_labels(labels)
 
         return (center_x_mm, center_y_mm), (semi_axes_a_mm, semi_axes_b_mm), angle_rad
 
@@ -283,7 +287,8 @@ class DataLoader(object):
                                       please specify one when initializing the loader.")
                 image_f, mask_f = self.one_hot_encode(image_f, mask_f)
 
-            (center_x_mm, center_y_mm), (semi_axes_a_mm, semi_axes_b_mm), angle_rad = self.mask_to_ellipse_parameters(image_path_f, mask_f)
+            (center_x_mm, center_y_mm), (semi_axes_a_mm,
+                                         semi_axes_b_mm), angle_rad = self.mask_to_ellipse_parameters(image_path_f, mask_f)
             image_f, mask_f = self.resize_data(image_f, mask_f)
 
             return image_f, [center_x_mm, center_y_mm, semi_axes_a_mm, semi_axes_b_mm, angle_rad]

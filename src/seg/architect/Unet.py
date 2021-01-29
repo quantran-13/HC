@@ -7,7 +7,7 @@ from tensorflow.keras import Input
 from tensorflow.keras.models import Model
 from tensorflow.keras.layers import Conv2D, BatchNormalization, Activation, MaxPooling2D, Dropout, Conv2DTranspose, concatenate, ZeroPadding2D
 
-from utils import load_model_from_path
+from seg.utils import load_pretrain_model
 
 
 def conv2d_block(input, n_filters, kernel_size=3, batchnorm=True):
@@ -100,7 +100,7 @@ def unet(input_size=(216, 320, 1), n_filters=64, batchnorm=True, dropout_rate=0.
 
     if freeze:
         fine_tune_at = freeze_at
-        model_tmp = load_model_from_path("../models/model_unet.hdf5")
+        model_tmp = load_pretrain_model("../models/model_unet.hdf5")
 
         for layer, layer_tmp in zip(model.layers[:fine_tune_at], model_tmp.layers[:fine_tune_at]):
             layer.set_weights(layer_tmp.get_weights())
