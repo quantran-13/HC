@@ -15,6 +15,6 @@ def parse_args():
 if __name__ == "__main__":
     args = parse_args()
     if args.method == 'r':
-        infer_reg.show_pred(args.IMAGE_PATH)
+        infer_reg.show_pred(args.IMAGE_PATH, "./models/sequential_mse=1242.16_Adam_ep290.hdf5")
     elif args.method == 's':
         pass
