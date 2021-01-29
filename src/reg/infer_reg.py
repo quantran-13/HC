@@ -9,7 +9,7 @@ import tensorflow as tf
 import matplotlib.pyplot as plt
 from tensorflow.keras.models import load_model
 
-from src.reg.data import DataLoader
+from reg.data import DataLoader
 
 data = DataLoader("../data/training_set",
                   one_hot_encoding=True,

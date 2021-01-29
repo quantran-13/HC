@@ -1,6 +1,7 @@
+import sys
+sys.path.append("./src")
 import  argparse
-from src.reg import infer_reg
-# from infer_reg import show_pred
+from reg import infer_reg
 
 def parse_args():
     parser = argparse.ArgumentParser()
