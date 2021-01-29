@@ -1,14 +1,16 @@
 import os
-import datetime
 import pandas as pd
-from tqdm import tqdm
-import math
 
-import seglosses
-from config import *
-from architect.Unet import unet
-from data import DataLoader
-from utils import time_to_timestr
+import math
+import datetime
+from tqdm import tqdm
+from pathlib import Path
+
+from seg import seglosses
+from seg.config import config
+from seg.data import DataLoader
+from seg.architect.Unet import unet
+from seg.utils import time_to_timestr
 
 import tensorflow as tf
 from tensorflow.keras.optimizers import SGD, Adam, RMSprop
@@ -47,7 +49,7 @@ def lr_step_decay(epoch, lr):
     """
     Step decay lr: learning_rate = initial_lr * drop_rate^floor(epoch / epochs_drop)
     """
-    initial_learning_rate = LEARNING_RATE
+    initial_learning_rate = config["learning_rate"]
     drop_rate = 0.5
     epochs_drop = 10.0
 
@@ -57,15 +59,15 @@ def lr_step_decay(epoch, lr):
 def train(run_dir, hparams, train_gen, valid_gen):
     # define model
     model = unet(dropout_rate=hparams[HP_DROPOUT],
-                 freeze=FREEZE,
+                 freeze=config["freeze"],
                  freeze_at=hparams[HP_FREEZE_AT])
     print("Model: ", model._name)
 
     # optim
     optimizers = {
-        "sgd": SGD(learning_rate=LEARNING_RATE, momentum=MOMENTUM, nesterov=True),
-        "adam": Adam(learning_rate=LEARNING_RATE, amsgrad=True),
-        "rmsprop": RMSprop(learning_rate=LEARNING_RATE, momentum=MOMENTUM)
+        "sgd": SGD(learning_rate=config["learning_rate"], momentum=config["momentum"], nesterov=True),
+        "adam": Adam(learning_rate=config["learning_rate"], amsgrad=True),
+        "rmsprop": RMSprop(learning_rate=config["learning_rate"], momentum=config["momentum"])
     }
     optimizer = optimizers[hparams[HP_OPTIMIZER]]
     print("Optimizer: ", optimizer._name)
@@ -107,11 +109,12 @@ def train(run_dir, hparams, train_gen, valid_gen):
         run_dir.split("/")[-1],
         model._name,
         optimizer._name,
-        BATCH_SIZE,
-        IMAGE_SIZE
+        config["batch_size"],
+        config["image_size"]
     )
-    os.mkdir("../models/{}/{}".format(run_dir.split("/")[-2],
-                                      run_dir.split("/")[-1]))
+    Path("../models/{}/{}".format(run_dir.split("/")[-2],
+                                  run_dir.split("/")[-1])).mkdir(parents=True, exist_ok=True)
+
     checkpoint = ModelCheckpoint(file_path, verbose=1, save_best_only=True)
 
     callbacks_list = [
@@ -127,8 +130,8 @@ def train(run_dir, hparams, train_gen, valid_gen):
     print("TRAINING ...\n")
 
     history = model.fit(train_gen,
-                        batch_size=BATCH_SIZE,
-                        epochs=EPOCHS,
+                        batch_size=config["batch_size"],
+                        epochs=config["epochs"],
                         callbacks=callbacks_list,
                         validation_data=valid_gen,
                         workers=8,
@@ -144,28 +147,25 @@ def prepare_data():
                            mode="train",
                            augmentation=True,
                            one_hot_encoding=True,
-                           palette=PALETTE,
-                           image_size=IMAGE_SIZE)
-    train_gen = train_set.data_gen(BATCH_SIZE, shuffle=True)
+                           palette=config["palette"],
+                           image_size=config["image_size"])
+    train_gen = train_set.data_gen(config["batch_size"], shuffle=True)
 
     valid_set = DataLoader("../data/training_set/",
                            mode="valid",
                            augmentation=True,
                            one_hot_encoding=True,
-                           palette=PALETTE,
-                           image_size=IMAGE_SIZE)
-    valid_gen = valid_set.data_gen(BATCH_SIZE, shuffle=True)
+                           palette=config["palette"],
+                           image_size=config["image_size"])
+    valid_gen = valid_set.data_gen(config["batch_size"], shuffle=True)
 
     return (train_gen, valid_gen)
 
 
 def main():
-    if not os.path.exists("../models"):
-        os.mkdir("../models")
-
-    print("Epochs: {}\t\tBatch size: {}\t\tInput size: {}".format(EPOCHS,
-                                                                  BATCH_SIZE,
-                                                                  IMAGE_SIZE))
+    print("Epochs: {}\t\tBatch size: {}\t\tInput size: {}".format(config["epochs"],
+                                                                  config["batch_size"],
+                                                                  config["image_size"]))
 
     # Datasets
     print("="*100)
@@ -173,7 +173,7 @@ def main():
     (train_gen, valid_gen) = prepare_data()
 
     timestr = time_to_timestr()
-    os.mkdir("../models/{}".format(timestr))
+    Path("../models/{}".format(timestr)).mkdir(parents=True, exist_ok=True)
     log_dir = "../logs/fit/{}".format(timestr)
 
     with tf.summary.create_file_writer(log_dir).as_default():

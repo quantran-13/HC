@@ -1,64 +1,68 @@
 import os
-import numpy as np
 import pandas as pd
-from PIL import Image
 
-from config import *
-from data import DataLoader
-from utils import load_model_from_path
+from PIL import Image
+from pathlib import Path
+
+import tensorflow as tf
+
+from seg.config import config
+from seg.data import DataLoader
+from seg.utils import load_model, read_image_by_tf
 
 
 def eval(model_path):
     # load model
-    file_path = os.path.join("../models", model_path)
-    model = load_model_from_path(file_path)
+    model = load_model(model_path)
 
     # load eval data
     print("Model trained using 799 images and validated with 200 images. Evaluates using valid set ...")
-    valid_set = DataLoader("../data/training_set/",
+    valid_set = DataLoader("../../data/training_set/",
                            mode="valid",
                            augmentation=True,
                            one_hot_encoding=True,
-                           palette=PALETTE,
-                           image_size=IMAGE_SIZE)
-    valid_gen = valid_set.data_gen(BATCH_SIZE, shuffle=True)
+                           palette=config["palette"],
+                           image_size=config["image_size"])
+    valid_gen = valid_set.data_gen(config["batch_size"], shuffle=True)
 
     result = model.evaluate(valid_gen, verbose=0)
     print("Model'score: {} \nLoss: {}.".format(result[1], result[0]))
 
 
-def predict(model_path, save_path="../data/predcited"):
-    if not os.path.exists(save_path):
-        os.mkdir(save_path)
+def pred_one_image(model, image):
+    pred_image = model.predict(tf.expand_dims(image, axis=0))
+
+    return pred_image.squeeze()
+
+
+def pred(model_path, save_path="../../data/predcited"):
+    Path(save_path).mkdir(parents=True, exist_ok=True)
 
     # load model
-    file_path = os.path.join("../models", model_path)
-    model = load_model_from_path(file_path)
+    model = load_model(model_path)
 
     # load test data
     print("="*100)
-    print("LOADING TESTING DATA ...\n")
-    test_set = DataLoader("../data/test_set/",
-                          mode="test",
-                          image_size=IMAGE_SIZE)
-    test_gen = test_set.data_gen(8)
-
+    data = DataLoader("../../data/test_set/",
+                      mode="test",
+                      image_size=config["image_size"])
     print("="*100)
-    print("PREDICTING ...")
-    preds_test = model.predict(test_gen)
+    print("Loading testing data ...\n")
+    df = pd.read_csv("../../data/test_set_pixel_size.csv")
 
-    df = pd.read_csv("../data/test_set_pixel_size.csv")
+    print("Predicting...")
+    for idx, row in df.iterrows():
+        image_path = os.path.join("../../data/test_set", row["filename"])
+        image = read_image_by_tf(image_path)
+        image = data.normalize_data(image)
+        image = data.resize_data(image)
 
-    image_paths = [os.path.join(save_path, _[0])
-                   for _ in df.values.tolist()]
-    pre_paths = [_.replace(".png", "_Predicted_Mask.png") for _ in image_paths]
+        pred_image = pred_one_image(model, image)
+        pre_paths = image_path.replace(".png", "_Predicted_Mask.png")
 
-    for path, mask in zip(pre_paths, preds_test):
-        image = Image.fromarray(mask.squeeze() * 255).convert("L")
-        image.save(path)
-
-    return (pre_paths, preds_test)
+        pred_image = Image.fromarray(pred_image * 255).convert("L")
+        pred_image.save(pre_paths)
 
 
 if __name__ == "__main__":
-    predict()
+    pred()

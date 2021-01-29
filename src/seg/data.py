@@ -9,9 +9,9 @@ import cv2
 from sklearn.model_selection import train_test_split
 import tensorflow as tf
 
-from config import *
-from utils import read_image, rotate_point
-from ellipse_fitting import *
+from seg.config import *
+from seg.utils import read_image, rotate_point
+from seg.ellipse_fitting import *
 
 # https://github.com/HasnainRaz/SemSegPipeline/blob/master/dataloader.py
 AUTOTUNE = tf.data.experimental.AUTOTUNE
