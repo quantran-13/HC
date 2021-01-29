@@ -12,8 +12,6 @@ from keras.preprocessing.image import load_img
 from keras.preprocessing.image import save_img
 from keras.preprocessing.image import img_to_array
 
-from tensorflow.keras.preprocessing.image import ImageDataGenerator
-
 import matplotlib.pyplot as plt
 
 AUTOTUNE = tf.data.experimental.AUTOTUNE
@@ -34,18 +32,9 @@ class DataLoader(object):
         self.image_size = (image_size[0], image_size[1])
         self.channels = image_size[2]
 
-        # if (self.mode == "train"):
-        #     self.df = pd.read_csv("./data/train_in_pixel.csv")
-        # elif (self.mode == "valid"):
-        #     self.df = pd.read_csv("./data/valid.csv")
-        # elif (self.mode == "test"):
-        #     self.df = pd.read_csv("./data/train.csv")
-
         self.normalize_label = normalize_label
         if self.normalize_label:
             self.get_labels_min_max()
-
-        # self.parse_data_path()
 
     def get_labels_min_max(self):
         df = pd.read_csv("./data/train_in_pixel.csv")
@@ -87,7 +76,6 @@ class DataLoader(object):
             Normalizes image
         """
         image /= 255.
-        # image = tf.image.per_image_standardization(image)
 
         if mask is not None:
             return image, mask
@@ -237,34 +225,11 @@ class DataLoader(object):
 
         return (labels[0], labels[1]), (labels[2], labels[3]), labels[4]
 
-    def mask_to_ellipse_parameters(self, image_path, mask):
-        row = df.loc[df["filename"] ==
-                     image_path.numpy().decode("utf-8").split("/")[-1]]
-        # factor = row["pixel size(mm)"].values[0]
-        factor = 1.
-
-        (xx, yy), (MA, ma), angle = ellipse_fit_mask(mask.numpy().squeeze())
-        center_x_mm = factor * yy
-        center_y_mm = factor * xx
-        semi_axes_a_mm = factor * ma / 2
-        semi_axes_b_mm = factor * MA / 2
-        angle_rad = (-angle * np.pi / 180) % np.pi
-
-        labels = [center_x_mm, center_y_mm,
-                  semi_axes_a_mm, semi_axes_b_mm, angle_rad]
-
-        if self.normalize_label:
-            (center_x_mm, center_y_mm), (semi_axes_a_mm,
-                                         semi_axes_b_mm), angle_rad = self.normalize_labels(labels)
-
-        return (center_x_mm, center_y_mm), (semi_axes_a_mm, semi_axes_b_mm), angle_rad
-
     @tf.function
     def map_function(self, images_path, masks_path):
         image_path, image, mask = self.parse_data(images_path, masks_path)
 
         def augmentation_func(image_path_f, image_f, mask_f):
-            # image_f, mask_f = self.equalize_histogram(image_f, mask_f)
             image_f, mask_f = self.normalize_data(image_f, mask_f)
 
             if self.augmentation:
