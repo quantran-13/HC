@@ -9,7 +9,7 @@ import tensorflow as tf
 import matplotlib.pyplot as plt
 from tensorflow.keras.models import load_model
 
-from regression.data import DataLoader
+from src.reg.data import DataLoader
 
 data = DataLoader("../data/training_set",
                   one_hot_encoding=True,
@@ -57,7 +57,7 @@ def show_pred(image_paths):
     image = data.normalize_data(image)
     image = data.resize_data(image)
     
-    model_path = "regression/models/sequential_mse=1242.16_Adam_ep290.hdf5"
+    model_path = "./models/sequential_mse=1242.16_Adam_ep290.hdf5"
     pred_image = pred_one_model(model_path, image, image_ori)
     # plot(pred_image)
     cv2.imshow("img", pred_image)
