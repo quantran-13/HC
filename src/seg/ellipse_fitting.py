@@ -1,6 +1,8 @@
 import numpy as np
 import pandas as pd
 
+import matplotlib.pyplot as plt
+
 import cv2
 
 
@@ -51,6 +53,12 @@ def ellipse_circumference_approx(major_semi_axis, minor_semi_axis):
             * (1 + (3 * h) / (10 + np.sqrt(4 - 3 * h))))
 
     return circ
+
+
+def plot(image):
+    plt.figure(figsize=(8, 8))
+    plt.imshow(image)
+    plt.axis('off')
 
 
 if __name__ == "__main__":

@@ -1,20 +1,22 @@
 import os
-import datetime
 import numpy as np
 import pandas as pd
-from tqdm import tqdm
+
 import math
+import datetime
+from tqdm import tqdm
+from pathlib import Path
 
-import seglosses
-from config import *
-from data import DataLoader
-from utils import time_to_timestr
-from SGDRScheduler import SGDRScheduler
+from seg import seglosses
+from seg.config import config
+from seg.data import DataLoader
+from seg.utils import time_to_timestr
+from seg.SGDRScheduler import SGDRScheduler
 
-from architect.Unet import unet
-from architect.DilateAttentionUnet import dilate_attention_unet
-from architect.AttentionUnet import attention_unet
-from architect.DilateUnet import dilate_unet
+from seg.architect.Unet import unet
+from seg.architect.DilateUnet import dilate_unet
+from seg.architect.AttentionUnet import attention_unet
+from seg.architect.DilateAttentionUnet import dilate_attention_unet
 
 import tensorflow as tf
 from tensorflow.keras.optimizers import SGD, Adam, RMSprop
@@ -27,7 +29,7 @@ def lr_step_decay(epoch, lr):
     """
     Step decay lr: learning_rate = initial_lr * drop_rate^floor(epoch / epochs_drop)
     """
-    initial_learning_rate = LEARNING_RATE
+    initial_learning_rate = config["learning_rate"]
     drop_rate = 0.5
     epochs_drop = 10.0
 
@@ -35,15 +37,13 @@ def lr_step_decay(epoch, lr):
 
 
 def train():
-    if not os.path.exists("../models"):
-        os.mkdir("../models")
 
     # device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
     # print(device)
 
-    print("Epochs: {}\t\tBatch size: {}\t\tInput size: {}".format(EPOCHS,
-                                                                  BATCH_SIZE,
-                                                                  IMAGE_SIZE))
+    print("Epochs: {}\t\tBatch size: {}\t\tInput size: {}".format(config["epochs"],
+                                                                  config["batch_size"],
+                                                                  config["image_size"]))
 
     # Datasets
     print("="*100)
@@ -53,34 +53,34 @@ def train():
                            augmentation=True,
                            compose=False,
                            one_hot_encoding=True,
-                           palette=PALETTE,
-                           image_size=IMAGE_SIZE)
-    train_gen = train_set.data_gen(BATCH_SIZE, shuffle=True)
+                           palette=config["palette"],
+                           image_size=config["image_size"])
+    train_gen = train_set.data_gen(config["batch_size"], shuffle=True)
 
     valid_set = DataLoader("../data/training_set/",
                            mode="valid",
                            augmentation=True,
                            compose=False,
                            one_hot_encoding=True,
-                           palette=PALETTE,
-                           image_size=IMAGE_SIZE)
-    valid_gen = valid_set.data_gen(BATCH_SIZE, shuffle=True)
+                           palette=config["palette"],
+                           image_size=config["image_size"])
+    valid_gen = valid_set.data_gen(config["batch_size"], shuffle=True)
 
     # define model
-    model = dilate_unet(input_size=IMAGE_SIZE,
-                        dropout_rate=DROPOUT_RATE,
-                        freeze=FREEZE,
-                        freeze_at=FREEZE_AT)
+    model = dilate_unet(input_size=config["image_size"],
+                        dropout_rate=config["dropout_rate"],
+                        freeze=config["freeze"],
+                        freeze_at=config["freeze_at"])
     print("Model: ", model._name)
 
     # optim
     optimizers = {
-        "sgd": SGD(learning_rate=LEARNING_RATE, momentum=MOMENTUM, nesterov=True),
-        "adam": Adam(learning_rate=LEARNING_RATE, amsgrad=True),
-        "rmsprop": RMSprop(learning_rate=LEARNING_RATE, momentum=MOMENTUM)
+        "sgd": SGD(learning_rate=config["learning_rate"], momentum=config["momentum"], nesterov=True),
+        "adam": Adam(learning_rate=config["learning_rate"], amsgrad=True),
+        "rmsprop": RMSprop(learning_rate=config["learning_rate"], momentum=config["momentum"])
     }
 
-    optimizer = optimizers[OPTIMIZER]
+    optimizer = optimizers[config["optimizer"]]
     print("Optimizer: ", optimizer._name)
 
     # loss
@@ -89,19 +89,20 @@ def train():
         "dice": seglosses.dice_loss,
         "bce": seglosses.bce_loss,
         "bce_dice": seglosses.bce_dice_loss,
-        "focal": seglosses.focal_loss(gamma=GAMMA),
-        "focal_dice": seglosses.focal_dice_loss(gamma=GAMMA),
+        "focal": seglosses.focal_loss(gamma=config["gamma"]),
+        "focal_dice": seglosses.focal_dice_loss(gamma=config["gamma"]),
     }
-    print("Loss: ", losses[LOSS])
+    print("Loss: ", losses[config["loss"]])
 
     model.compile(optimizer=optimizer,
-                  loss=[losses[LOSS]],
+                  loss=[losses[config["loss"]]],
                   metrics=[seglosses.jaccard_index, seglosses.dice_coeff, seglosses.bce_loss])
 
     # callbacks
     lr_schedule = SGDRScheduler(min_lr=1e-5,
-                                max_lr=LEARNING_RATE,
-                                steps_per_epoch=np.ceil(EPOCHS/BATCH_SIZE),
+                                max_lr=config["learning_rate"],
+                                steps_per_epoch=np.ceil(
+                                    config["epochs"] / config["batch_size"]),
                                 lr_decay=0.9,
                                 cycle_length=10,
                                 mult_factor=1.5)
@@ -124,13 +125,13 @@ def train():
     tensorboard_callback = TensorBoard(log_dir=log_dir,
                                        write_images=True)
 
-    os.mkdir("../models/{}".format(timestr))
+    Path("../models/{}".format(timestr)).mkdir(parents=True, exist_ok=True)
     file_path = "../models/%s/%s_%s_ep{epoch:02d}_bsize%d_insize%s.hdf5" % (
         timestr,
         model._name,
         optimizer._name,
-        BATCH_SIZE,
-        IMAGE_SIZE
+        config["batch_size"],
+        config["image_size"]
     )
     checkpoint = ModelCheckpoint(file_path, verbose=1, save_best_only=True)
 
@@ -146,8 +147,8 @@ def train():
     print("TRAINING ...\n")
 
     history = model.fit(train_gen,
-                        batch_size=BATCH_SIZE,
-                        epochs=EPOCHS,
+                        batch_size=config["batch_size"],
+                        epochs=config["epochs"],
                         callbacks=callbacks_list,
                         validation_data=valid_gen,
                         workers=8,

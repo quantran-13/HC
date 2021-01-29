@@ -1,17 +1,14 @@
 import os
-import sys
-import glob
+import numpy as np
+
 import math
 import datetime
-import numpy as np
 from PIL import Image
-
-# import matplotlib.pyplot as plt
 
 import tensorflow as tf
 from tensorflow.keras.models import load_model
 
-import seglosses
+from seg import seglosses
 
 
 def time_to_timestr():
@@ -20,7 +17,7 @@ def time_to_timestr():
     return timestr
 
 
-def load_model_from_path(file_path):
+def load_pretrain_model(file_path):
     custom_objects = {
         "jaccard_loss": seglosses.jaccard_loss,
         "jaccard_index": seglosses.jaccard_index,
@@ -32,13 +29,22 @@ def load_model_from_path(file_path):
         "f_d_loss": seglosses.focal_dice_loss()
     }
 
-    model = load_model(file_path, custom_objects=custom_objects)
+    return load_model(file_path, custom_objects=custom_objects)
 
-    return model
+
+def load_model(file_path):
+    return load_model(file_path, compile=False)
 
 
 def read_image(path):
     return np.array(Image.open(path))
+
+
+def read_image_by_tf(path):
+    image_content = tf.io.read_file(path)
+    image = tf.image.decode_png(image_content, channels=1)
+
+    return tf.cast(image, tf.float32)
 
 
 def rotate_point(point, center, deg):
@@ -52,13 +58,3 @@ def rotate_point(point, center, deg):
     rotated = np.dot(rotMatrix, point).astype(np.int)
 
     return tuple(rotated + center)
-
-
-def batch_2_numpy(data_batches):
-    batch_numpy = [batch.numpy().squeeze() for batch in data_batches]
-    data = batch_numpy[0]
-
-    for i in range(1, len(batch_numpy)):
-        data = np.concatenate((data, batch_numpy[i]), axis=0)
-
-    return data

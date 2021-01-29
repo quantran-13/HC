@@ -1,8 +1,12 @@
+import os
 import numpy as np
 import pandas as pd
 
-from predict import predict
-from ellipse_fitting import ellipse_fit_mask
+from seg.config import config
+from seg.data import DataLoader
+from seg.predict import pred_one_image
+from seg.ellipse_fitting import ellipse_fit_mask
+from seg.utils import load_model, read_image_by_tf
 
 
 def generate_submission(model_path, predicted_path):
@@ -12,15 +16,26 @@ def generate_submission(model_path, predicted_path):
     axes_b = list()
     angles = list()
 
-    (pre_paths, pre_images) = predict(model_path, predicted_path)
+    model = load_model(model_path)
 
-    df = pd.read_csv("../data/test_set_pixel_size.csv")
+    data = DataLoader("../../data/test_set/",
+                      mode="test",
+                      image_size=config["image_size"])
 
-    for mask, (i, row) in zip(pre_images, df.iterrows()):
-        assert 540 / mask.shape[0] == 800 / mask.shape[1]
+    df = pd.read_csv("../../data/test_set_pixel_size.csv")
 
-        (xx, yy), (MA, ma), angle = ellipse_fit_mask(mask.squeeze())
-        factor = row["pixel size(mm)"] * 540 / mask.shape[0]
+    for idx, row in df.iterrows():
+        image_path = os.path.join("../../data/test_set", row["filename"])
+        image = read_image_by_tf(image_path)
+        image = data.normalize_data(image)
+        image = data.resize_data(image)
+
+        pred_image = pred_one_image(model, image)
+
+        assert 540 / pred_image.shape[0] == 800 / pred_image.shape[1]
+
+        (xx, yy), (MA, ma), angle = ellipse_fit_mask(pred_image)
+        factor = row["pixel size(mm)"] * 540 / pred_image.shape[0]
 
         center_x_mm = factor * yy
         center_y_mm = factor * xx
@@ -41,7 +56,7 @@ def generate_submission(model_path, predicted_path):
     df["semi_axes_b_mm"] = axes_b
     df["angle_rad"] = angles
 
-    print("MAKE SUBMISSION CSV ...")
+    print("Make submission csv ...")
     df.to_csv(
         "../submission/{}.csv".format(predicted_path.split("/")[-1]), index=False)
 
