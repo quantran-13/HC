@@ -39,7 +39,7 @@ def draw_ellipse(img, binary_mask):
                       0,
                       360,
                       color=(251, 189, 5),
-                      thickness=1)
+                      thickness=2)
 
     return img
 

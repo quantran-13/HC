@@ -74,25 +74,26 @@ def plot(image):
 def plot_pred(model, image_path, mask_path=None):
 
     image_ori = read_image_by_tf(image_path)
-    image_ori = tf.image.resize_with_pad(
-        image_ori, config["image_size"][0], config["image_size"][1], method="nearest")
+    # image_ori = tf.image.resize_with_pad(
+    #     image_ori, config["image_size"][0], config["image_size"][1], method="nearest")
     image_ori = np.asarray(np.dstack(
         (image_ori.numpy(), image_ori.numpy(), image_ori.numpy())), dtype=np.uint8)
 
     if mask_path:
         mask = read_image_by_tf(mask_path)
-        mask = tf.image.resize_with_pad(
-            mask, config["image_size"][0], config["image_size"][1], method="nearest")
+        # mask = tf.image.resize_with_pad(
+        #     mask, config["image_size"][0], config["image_size"][1], method="nearest")
         mask = np.asarray(np.dstack((mask.numpy(
         )/255 * 64, mask.numpy()/255 * 134, mask.numpy()/255 * 244)), dtype=np.uint8)
-        image_ori = cv2.addWeighted(image_ori, 0.7, mask, 1, 0)
+        image_ori = cv2.addWeighted(image_ori, 1.0, mask, 1, 0)
 
     image = load_infer_image(image_path)
     pred_mask = pred_one_image(model, image)
+    pred_mask = cv2.resize(pred_mask, (800, 540))
     pred_image = np.asarray(
         np.dstack((pred_mask * 234, pred_mask * 68, pred_mask * 53)), dtype=np.uint8)
 
-    plot_image = cv2.addWeighted(image_ori, 0.7, pred_image, 1, 0)
+    plot_image = cv2.addWeighted(image_ori, 1.0, pred_image, 1, 0)
     plot_image = draw_ellipse(plot_image, pred_mask)
     plot(plot_image)
 
