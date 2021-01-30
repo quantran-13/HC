@@ -36,6 +36,7 @@ class DataLoader(object):
         if self.normalize_label:
             self.get_labels_min_max()
 
+
     def get_labels_min_max(self):
         df = pd.read_csv("./data/train_in_pixel.csv")
         list_features = ["center x(mm)", "center y(mm)",
@@ -291,3 +292,9 @@ class DataLoader(object):
             data = data.batch(batch_size).prefetch(AUTOTUNE)
 
         return data
+
+def read_image_by_tf(path, channels=1):
+    image_content = tf.io.read_file(path)
+    image = tf.image.decode_png(image_content, channels=channels)
+
+    return tf.cast(image, tf.float32)

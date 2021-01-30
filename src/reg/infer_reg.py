@@ -8,7 +8,7 @@ from PIL import Image
 import tensorflow as tf
 import matplotlib.pyplot as plt
 
-from reg.data import DataLoader
+from reg.data import DataLoader, read_image_by_tf
 
 data = DataLoader("../data/training_set",
                   one_hot_encoding=True,
@@ -26,8 +26,8 @@ def draw_ellipse(img, paras):
                        -paras[4],
                        0,
                        360,
-                       color=(0, 255, 255),
-                       thickness=3)
+                       color=(251, 189, 5),
+                       thickness=2)
 
 
 def pred_one_model(model, image, image_ori):
@@ -36,12 +36,18 @@ def pred_one_model(model, image, image_ori):
 
     return pred_image
 
-def show_pred(image_path, model):
+def show_pred(image_path, model, mask_path=None):
     image_ori = cv2.imread(image_path)
+    h, w,_ = image_ori.shape
     image_content = cv2.cvtColor(image_ori, cv2.COLOR_BGR2GRAY)
     image = np.asarray(np.dstack((image_content.squeeze(), image_content.squeeze(), image_content.squeeze())))
     image = tf.convert_to_tensor(image)
     image = tf.cast(image, tf.float32)
+
+    if mask_path:
+        mask = read_image_by_tf(mask_path)
+        mask = np.asarray(np.dstack((mask.numpy()/255 * 64, mask.numpy()/255 * 134, mask.numpy()/255 * 244)), dtype=np.uint8)
+        image_ori = cv2.addWeighted(image_ori, 0.7, mask, 1, 0)
 
     image = data.normalize_data(image)
     image = data.resize_data(image)

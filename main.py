@@ -1,17 +1,17 @@
-from tensorflow.keras.models import load_model
-from seg.utils import load_infer_model
-from seg import predict
-from reg import infer_reg
 import argparse
 
 import sys
 sys.path.append("./src")
 
+from tensorflow.keras.models import load_model
+from seg.utils import load_infer_model
+from seg import predict
+from reg import infer_reg
 
 def parse_args():
     parser = argparse.ArgumentParser()
     parser.add_argument('image_path', type=str)
-    parser.add_argument('mask_path', type=str, default=None)
+    parser.add_argument('--mask_path', type=str, default=None)
     parser.add_argument('--model_path', type=str,
                         default="./models/regression_model.hdf5")
     parser.add_argument('--method', type=str, default='r',
@@ -27,7 +27,7 @@ if __name__ == "__main__":
 
     if args.method == 'r':
         model = load_model(model_path, compile=False)
-        infer_reg.show_pred(image_path, model)
+        infer_reg.show_pred(image_path, model, mask_path)
 
     if args.method == 's':
         model = load_infer_model(model_path)
