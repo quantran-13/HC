@@ -1,6 +1,6 @@
 from tensorflow.keras.models import load_model
 from seg.utils import load_infer_model
-from seg import ellipse_fitting
+from seg import predict
 from reg import infer_reg
 import argparse
 
@@ -31,4 +31,4 @@ if __name__ == "__main__":
 
     if args.method == 's':
         model = load_infer_model(model_path)
-        ellipse_fitting.plot_pred(model, image_path, mask_path)
+        predict.plot_pred(model, image_path, mask_path)
