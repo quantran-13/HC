@@ -34,27 +34,3 @@ def load_pretrain_model(file_path):
 
 def load_infer_model(file_path):
     return load_model(file_path, compile=False)
-
-
-def read_image(path):
-    return np.array(Image.open(path))
-
-
-def read_image_by_tf(path):
-    image_content = tf.io.read_file(path)
-    image = tf.image.decode_png(image_content, channels=1)
-
-    return tf.cast(image, tf.float32)
-
-
-def rotate_point(point, center, deg):
-    point = np.asarray(point)
-    center = np.asarray(center)
-    point = point - center
-
-    rad = math.radians(deg)
-    rotMatrix = np.array([[math.cos(rad), math.sin(rad)],
-                          [-math.sin(rad), math.cos(rad)]])
-    rotated = np.dot(rotMatrix, point).astype(np.int)
-
-    return tuple(rotated + center)

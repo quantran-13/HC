@@ -7,8 +7,8 @@ from pathlib import Path
 import tensorflow as tf
 
 from seg.config import config
-from seg.data import DataLoader
-from seg.utils import load_infer_model, read_image_by_tf
+from seg.data import DataLoader, load_infer_image
+from seg.utils import load_infer_model
 
 
 def eval(model_path):
@@ -16,8 +16,9 @@ def eval(model_path):
     model = load_infer_model(model_path)
 
     # load eval data
+    print("="*100)
     print("Model trained using 799 images and validated with 200 images. Evaluates using valid set ...")
-    valid_set = DataLoader("../../data/training_set/",
+    valid_set = DataLoader("./data/training_set/",
                            mode="valid",
                            augmentation=True,
                            one_hot_encoding=True,
@@ -35,26 +36,22 @@ def pred_one_image(model, image):
     return pred_image.squeeze()
 
 
-def pred(model_path, save_path="../../data/predcited"):
+def pred(model_path, save_path="./data/predcited"):
     Path(save_path).mkdir(parents=True, exist_ok=True)
 
     # load model
     model = load_infer_model(model_path)
 
     # load test data
-    data = DataLoader("../../data/test_set/",
-                      mode="test",
-                      image_size=config["image_size"])
     print("="*100)
     print("Loading testing data ...\n")
-    df = pd.read_csv("../../data/test_set_pixel_size.csv")
+    df = pd.read_csv("./data/test_set_pixel_size.csv")
 
+    print("="*100)
     print("Predicting...")
     for idx, row in df.iterrows():
-        image_path = os.path.join("../../data/test_set", row["filename"])
-        image = read_image_by_tf(image_path)
-        image = data.normalize_data(image)
-        image = data.resize_data(image)
+        image_path = os.path.join("./data/test_set", row["filename"])
+        image = load_infer_image(image_path)
 
         pred_image = pred_one_image(model, image)
         pre_paths = image_path.replace(".png", "_Predicted_Mask.png")

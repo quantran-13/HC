@@ -10,8 +10,7 @@ from sklearn.model_selection import train_test_split
 import tensorflow as tf
 
 from seg.config import *
-from seg.utils import read_image, rotate_point
-from seg.ellipse_fitting import *
+from seg.ellipse_fitting import ellipse_fit_anno, ellipse_circumference_approx, rotate_point
 
 # https://github.com/HasnainRaz/SemSegPipeline/blob/master/dataloader.py
 AUTOTUNE = tf.data.experimental.AUTOTUNE
@@ -28,8 +27,8 @@ def generate_train_valid_indices():
     assert len(train_indices) + len(valid_indices) == 999
     assert not set(train_indices) & set(valid_indices)
 
-    np.save("../data/train_indices.npy", train_indices)
-    np.save("../data/valid_indices.npy", valid_indices)
+    np.save("./data/train_indices.npy", train_indices)
+    np.save("./data/valid_indices.npy", valid_indices)
 
 
 def add_ellipses_csv():
@@ -37,7 +36,7 @@ def add_ellipses_csv():
         Add ellipses parameters & bounding box parameters to training_set_pixel_size_and_HC.csv
     """
 
-    df = pd.read_csv("../data/training_set_pixel_size_and_HC.csv")
+    df = pd.read_csv("./data/training_set_pixel_size_and_HC.csv")
 
     df_pixel = df.copy()
     centers_x_pixel = list()
@@ -56,7 +55,7 @@ def add_ellipses_csv():
     for i, row in df.iterrows():
         filename = row["filename"]
         print("Image: {}".format(filename))
-        anno = read_image(os.path.join("../data/training_set",
+        anno = read_image(os.path.join("./data/training_set",
                                        filename.replace(".png", "_Annotation.png")))
 
         # plt.imshow(anno)
@@ -110,14 +109,14 @@ def add_ellipses_csv():
     df_mm["angle_rad"] = angles_mm
 
     df_pixel.to_csv(
-        "../data/training_set_pixel_size_and_HC_and_ellipses_in_pixel.csv", index=False)
+        "./data/training_set_pixel_size_and_HC_and_ellipses_in_pixel.csv", index=False)
 
     df_mm.to_csv(
-        "../data/training_set_pixel_size_and_HC_and_ellipses.csv", index=False)
+        "./data/training_set_pixel_size_and_HC_and_ellipses.csv", index=False)
 
 
 def add_ellipses_keypoints():
-    df = pd.read_csv("../data/training_set_pixel_size_and_HC.csv")
+    df = pd.read_csv("./data/training_set_pixel_size_and_HC.csv")
 
     df_kp = df.copy()
     x0s = list()
@@ -134,7 +133,7 @@ def add_ellipses_keypoints():
     for i, row in df.iterrows():
         filename = row["filename"]
         print("Image: {}".format(filename))
-        anno = read_image(os.path.join("../data/training_set",
+        anno = read_image(os.path.join("./data/training_set",
                                        filename.replace(".png", "_Annotation.png")))
 
         # plt.imshow(anno)
@@ -176,20 +175,20 @@ def add_ellipses_keypoints():
     df_kp["y4"] = y4s
 
     df_kp.to_csv(
-        "../data/training_set_pixel_size_and_HC_and_ellipses_keypoints.csv", index=False)
+        "./data/training_set_pixel_size_and_HC_and_ellipses_keypoints.csv", index=False)
 
 
 def create_data_csv(df, npy_file, out_file):
-    npy_path = "../data/{}".format(npy_file)
+    npy_path = "./data/{}".format(npy_file)
 
     subset_indices = np.load(npy_path)
 
     subset_df = df[df.index.isin(subset_indices)]
-    subset_df.to_csv("../data/{}".format(out_file), index=False)
+    subset_df.to_csv("./data/{}".format(out_file), index=False)
 
 
 def generate_data_csv(data_csv_path, train_file, valid_file):
-    df = pd.read_csv("../data/{}".format(data_csv_path))
+    df = pd.read_csv("./data/{}".format(data_csv_path))
 
     create_data_csv(df, "train_indices.npy", train_file)
     create_data_csv(df, "valid_indices.npy", valid_file)
@@ -202,7 +201,7 @@ class DataLoader(object):
 
     def __init__(self, root, mode="train", augmentation=False, compose=False, one_hot_encoding=False, palette=None, image_size=(216, 320, 1)):
         """
-        root: "../data/training_set"
+        root: "./data/training_set"
         """
         super().__init__()
         self.root = root
@@ -214,11 +213,12 @@ class DataLoader(object):
         self.image_size = (image_size[0], image_size[1])
 
         if (self.mode == "train"):
-            self.df = pd.read_csv("../../data/train.csv")
+            self.df = pd.read_csv("./data/train.csv")
         elif (self.mode == "valid"):
-            self.df = pd.read_csv("../../data/valid.csv")
+            self.df = pd.read_csv("./data/valid.csv")
         elif (self.mode == "test"):
-            self.df = pd.read_csv("../../data/test_set_pixel_size.csv")
+            import glob
+            self.df = pd.read_csv("./data/test_set_pixel_size.csv")
 
         self.parse_data_path()
 
@@ -499,6 +499,30 @@ class DataLoader(object):
             data = data.batch(batch_size).prefetch(AUTOTUNE)
 
         return data
+
+
+data = DataLoader("./data/test_set/",
+                  mode="test",
+                  image_size=config["image_size"])
+
+
+def read_image(path):
+    return np.array(Image.open(path))
+
+
+def read_image_by_tf(path, channels=1):
+    image_content = tf.io.read_file(path)
+    image = tf.image.decode_png(image_content, channels=channels)
+
+    return tf.cast(image, tf.float32)
+
+
+def load_infer_image(path, channels=1):
+    image = read_image_by_tf(path, channels=channels)
+    image = data.normalize_data(image)
+    image = data.resize_data(image)
+
+    return image
 
 
 if __name__ == "__main__":
