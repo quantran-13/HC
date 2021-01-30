@@ -6,7 +6,7 @@ from seg.config import config
 from seg.data import DataLoader
 from seg.predict import pred_one_image
 from seg.ellipse_fitting import ellipse_fit_mask
-from seg.utils import load_model, read_image_by_tf
+from seg.utils import load_infer_model, read_image_by_tf
 
 
 def generate_submission(model_path, predicted_path):
@@ -16,7 +16,7 @@ def generate_submission(model_path, predicted_path):
     axes_b = list()
     angles = list()
 
-    model = load_model(model_path)
+    model = load_infer_model(model_path)
 
     data = DataLoader("../../data/test_set/",
                       mode="test",

@@ -8,12 +8,12 @@ import tensorflow as tf
 
 from seg.config import config
 from seg.data import DataLoader
-from seg.utils import load_model, read_image_by_tf
+from seg.utils import load_infer_model, read_image_by_tf
 
 
 def eval(model_path):
     # load model
-    model = load_model(model_path)
+    model = load_infer_model(model_path)
 
     # load eval data
     print("Model trained using 799 images and validated with 200 images. Evaluates using valid set ...")
@@ -39,10 +39,9 @@ def pred(model_path, save_path="../../data/predcited"):
     Path(save_path).mkdir(parents=True, exist_ok=True)
 
     # load model
-    model = load_model(model_path)
+    model = load_infer_model(model_path)
 
     # load test data
-    print("="*100)
     data = DataLoader("../../data/test_set/",
                       mode="test",
                       image_size=config["image_size"])

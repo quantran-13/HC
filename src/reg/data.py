@@ -6,7 +6,7 @@ import random
 import numpy as np
 import pandas as pd
 
-import tensorflow as tf 
+import tensorflow as tf
 from PIL import ImageFile, Image
 from keras.preprocessing.image import load_img
 from keras.preprocessing.image import save_img
@@ -38,7 +38,8 @@ class DataLoader(object):
 
     def get_labels_min_max(self):
         df = pd.read_csv("./data/train_in_pixel.csv")
-        list_features = ["center x(mm)", "center y(mm)", "semi axes a(mm)", "semi axes b(mm)", "angle(rad)"]
+        list_features = ["center x(mm)", "center y(mm)",
+                         "semi axes a(mm)", "semi axes b(mm)", "angle(rad)"]
         des = df[list_features].describe().T
 
         self.labels_min_max = des[["min", "max"]]
@@ -219,7 +220,8 @@ class DataLoader(object):
 
     def normalize_labels(self, labels):
         for _, row in enumerate(self.labels_min_max.iterrows()):
-            labels[_] = (labels[_] - row[1]["min"]) / (row[1]["max"] - row[1]["min"])
+            labels[_] = (labels[_] - row[1]["min"]) / \
+                (row[1]["max"] - row[1]["min"])
 
         return (labels[0], labels[1]), (labels[2], labels[3]), labels[4]
 
@@ -250,7 +252,8 @@ class DataLoader(object):
                                       please specify one when initializing the loader.")
                 image_f, mask_f = self.one_hot_encode(image_f, mask_f)
 
-            (center_x_mm, center_y_mm), (semi_axes_a_mm, semi_axes_b_mm), angle_rad = self.mask_to_ellipse_parameters(image_path_f, mask_f)
+            (center_x_mm, center_y_mm), (semi_axes_a_mm,
+                                         semi_axes_b_mm), angle_rad = self.mask_to_ellipse_parameters(image_path_f, mask_f)
             image_f, mask_f = self.resize_data(image_f, mask_f)
 
             return image_f, [center_x_mm, center_y_mm, semi_axes_a_mm, semi_axes_b_mm, angle_rad]

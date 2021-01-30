@@ -214,11 +214,11 @@ class DataLoader(object):
         self.image_size = (image_size[0], image_size[1])
 
         if (self.mode == "train"):
-            self.df = pd.read_csv("../data/train.csv")
+            self.df = pd.read_csv("../../data/train.csv")
         elif (self.mode == "valid"):
-            self.df = pd.read_csv("../data/valid.csv")
+            self.df = pd.read_csv("../../data/valid.csv")
         elif (self.mode == "test"):
-            self.df = pd.read_csv("../data/test_set_pixel_size.csv")
+            self.df = pd.read_csv("../../data/test_set_pixel_size.csv")
 
         self.parse_data_path()
 

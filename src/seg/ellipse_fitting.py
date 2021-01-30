@@ -1,9 +1,18 @@
 import numpy as np
 import pandas as pd
 
+import cv2
 import matplotlib.pyplot as plt
 
-import cv2
+from seg.config import config
+from seg.data import DataLoader
+from seg.predict import pred_one_image
+from seg.utils import read_image_by_tf
+
+
+data = DataLoader("../../data/test_set/",
+                  mode="test",
+                  image_size=config["image_size"])
 
 
 def ellipse_fit(points, method="Direct"):
@@ -59,6 +68,16 @@ def plot(image):
     plt.figure(figsize=(8, 8))
     plt.imshow(image)
     plt.axis('off')
+
+
+def plot_pred(model, image_path):
+    image = read_image_by_tf(image_path)
+    image = data.normalize_data(image)
+    image = data.resize_data(image)
+
+    pred_image = pred_one_image(model, image)
+
+    plot(pred_image)
 
 
 if __name__ == "__main__":

@@ -32,7 +32,7 @@ def load_pretrain_model(file_path):
     return load_model(file_path, custom_objects=custom_objects)
 
 
-def load_model(file_path):
+def load_infer_model(file_path):
     return load_model(file_path, compile=False)
 
 

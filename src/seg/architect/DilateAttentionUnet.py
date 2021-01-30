@@ -8,7 +8,7 @@ from tensorflow.keras.models import Model
 from tensorflow.keras.layers import Conv2D, BatchNormalization, Activation, MaxPooling2D, Dropout, Conv2DTranspose, concatenate, ZeroPadding2D, Add, Multiply, Lambda
 from tensorflow.keras import backend as K
 
-from utils import load_model_from_path
+from seg.utils import load_pretrain_model
 
 
 def activation(x, batchnorm=True):
@@ -184,7 +184,7 @@ def dilate_attention_unet(input_size=(216, 320, 1), n_filters=64, batchnorm=True
 
     if freeze:
         fine_tune_at = freeze_at
-        model_tmp = load_model_from_path(
+        model_tmp = load_pretrain_model(
             "../models/model_dilate_attention_unet.hdf5")
 
         for layer, layer_tmp in zip(model.layers[:fine_tune_at], model_tmp.layers[:fine_tune_at]):
