@@ -19,7 +19,7 @@ def parse_args():
 if __name__ == "__main__":
     args = parse_args()
     image_path = args.image_path
-    model_path = args.model_path
+    # model_path = args.model_path
 
     if args.method == 'r':
         infer_reg.show_pred(image_path)
