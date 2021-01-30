@@ -14,6 +14,12 @@ data = DataLoader("../data/training_set",
                   one_hot_encoding=True,
                   palette=[255])
 
+def plot(image):
+    plt.figure(figsize=(8, 8))
+    plt.imshow(image)
+    plt.axis('off')
+    plt.show()
+
 def draw_ellipse(img, paras):
     return cv2.ellipse(img, (paras[0], paras[1]),
                        (paras[2], paras[3]),
@@ -33,7 +39,6 @@ def pred_one_model(model, image, image_ori):
 def show_pred(image_path, model):
     image_ori = cv2.imread(image_path)
     image_content = cv2.cvtColor(image_ori, cv2.COLOR_BGR2GRAY)
-    # image_content = cv2.imread(image_path, cv2.IMREAD_GRAYSCALE)
     image = np.asarray(np.dstack((image_content.squeeze(), image_content.squeeze(), image_content.squeeze())))
     image = tf.convert_to_tensor(image)
     image = tf.cast(image, tf.float32)
@@ -42,8 +47,7 @@ def show_pred(image_path, model):
     image = data.resize_data(image)
     
     pred_image = pred_one_model(model, image, image_ori)
-    cv2.imshow("img", pred_image)
-    cv2.waitKey(0)
+    plot(pred_image)
 
 
 if __name__ == "__main__":

@@ -68,6 +68,7 @@ def plot(image):
     plt.figure(figsize=(8, 8))
     plt.imshow(image)
     plt.axis('off')
+    plt.show()
 
 
 def plot_pred(model, image_path):
@@ -77,9 +78,7 @@ def plot_pred(model, image_path):
 
     pred_image = pred_one_image(model, image)
 
-    # plot(pred_image)
-    cv2.imshow("img", pred_image)
-    cv2.waitKey(0)
+    plot(pred_image)
 
 
 if __name__ == "__main__":
