@@ -7,7 +7,6 @@ from PIL import Image
 
 import tensorflow as tf
 import matplotlib.pyplot as plt
-from tensorflow.keras.models import load_model
 
 from reg.data import DataLoader
 
@@ -25,14 +24,13 @@ def draw_ellipse(img, paras):
                        thickness=3)
 
 
-def pred_one_model(model_path, image, image_ori):
-    model = load_model(model_path, compile=False)
+def pred_one_model(model, image, image_ori):
     pred = model.predict(tf.expand_dims(image, axis=0))
     pred_image = draw_ellipse(image_ori, pred[0])
 
     return pred_image
 
-def show_pred(image_path, model_path):
+def show_pred(image_path, model):
     image_ori = cv2.imread(image_path)
     image_content = cv2.cvtColor(image_ori, cv2.COLOR_BGR2GRAY)
     # image_content = cv2.imread(image_path, cv2.IMREAD_GRAYSCALE)
@@ -43,7 +41,7 @@ def show_pred(image_path, model_path):
     image = data.normalize_data(image)
     image = data.resize_data(image)
     
-    pred_image = pred_one_model(model_path, image, image_ori)
+    pred_image = pred_one_model(model, image, image_ori)
     cv2.imshow("img", pred_image)
     cv2.waitKey(0)
 

@@ -77,7 +77,9 @@ def plot_pred(model, image_path):
 
     pred_image = pred_one_image(model, image)
 
-    plot(pred_image)
+    # plot(pred_image)
+    cv2.imshow("img", pred_image)
+    cv2.waitKey(0)
 
 
 if __name__ == "__main__":
