@@ -36,7 +36,7 @@ def pred_one_model(model, image, image_ori):
 
     return pred_image
 
-def show_pred(image_path, model, mask_path=None):
+def show_pred(image_path, model,  img_id, mask_path=None):
     image_ori = cv2.imread(image_path)
     h, w,_ = image_ori.shape
     image_content = cv2.cvtColor(image_ori, cv2.COLOR_BGR2GRAY)
@@ -53,7 +53,8 @@ def show_pred(image_path, model, mask_path=None):
     image = data.resize_data(image)
     
     pred_image = pred_one_model(model, image, image_ori)
-    plot(pred_image)
+    Image.fromarray(pred_image.astype(np.uint8)).save(os.path.join('./outputs/A14', img_id+".png"))
+    # plot(pred_image)
 
 
 if __name__ == "__main__":

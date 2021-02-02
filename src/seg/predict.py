@@ -95,6 +95,7 @@ def plot_pred(model, image_path, mask_path=None):
 
     plot_image = cv2.addWeighted(image_ori, 1.0, pred_image, 1, 0)
     plot_image = draw_ellipse(plot_image, pred_mask)
+
     plot(plot_image)
 
 
